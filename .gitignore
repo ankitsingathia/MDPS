@@ -1,0 +1,6 @@
+mdps-streamlit/.git/
+mdps-streamlit/.streamlit/secrets.toml
+mdps-streamlit/data.db
+mdps-streamlit/__pycache__/
+mdps-streamlit/code/__pycache__/
+*.pyc
