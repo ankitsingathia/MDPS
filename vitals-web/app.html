@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VITALS — Screening</title>
+
+<style>
+@font-face{font-family:"Basis";src:url("/fonts/BasisGrotesqueArabicPro-Light.woff2") format("woff2");font-weight:300;font-display:swap}
+@font-face{font-family:"Basis";src:url("/fonts/BasisGrotesqueArabicPro-Regular.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Basis";src:url("/fonts/BasisGrotesqueArabicPro-Medium.woff2") format("woff2");font-weight:500;font-display:swap}
+
+:root{
+  --bg:#2b3530; --bg-2:#232c28; --fg:#ddd8ca;
+  --fg-dim:rgba(221,216,202,.70); --fg-faint:rgba(221,216,202,.34);
+  --line:rgba(221,216,202,.18); --accent:#e0b878;
+  --low:#8fbf9f; --moderate:#e0b878; --high:#e08a6b;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --pad:clamp(20px,5vw,64px); --maxw:1180px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{background:var(--bg);color:var(--fg);font-family:"Basis",-apple-system,"Segoe UI",sans-serif;
+  font-weight:300;line-height:1.5;min-height:100vh}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+ul{list-style:none}
+button,input,select{font:inherit;color:inherit}
+
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 var(--pad)}
+h1{font-size:clamp(28px,3.6vw,44px);font-weight:300;line-height:1.1;letter-spacing:-.015em}
+h2{font-size:clamp(20px,2vw,26px);font-weight:300;letter-spacing:-.01em}
+.eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--fg-dim)}
+p{color:var(--fg-dim)}
+
+/* ---------- tool header: orientation, not atmosphere ---------- */
+header{position:sticky;top:0;z-index:80;background:rgba(35,44,40,.92);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;gap:24px;height:64px}
+.brand{font-size:15px;letter-spacing:.32em;font-weight:400}
+.steps{display:flex;gap:8px;margin:0 auto;align-items:center;font-size:12px;color:var(--fg-faint)}
+.hnav{display:flex;gap:20px;font-size:13px;color:var(--fg-dim);align-items:center}
+.hnav a{color:var(--fg-dim)}
+.hnav a:hover{color:var(--fg)}
+.hnav a.on{color:var(--accent)}
+.hnav a.on::after{content:"";display:block;height:1px;background:var(--accent);margin-top:3px}
+@media (max-width:900px){.hnav{gap:14px;font-size:12px}}
+.steps b{font-weight:300;transition:color .3s ease}
+.steps b.on{color:var(--accent)}
+.steps i{font-style:normal;opacity:.4}
+.exit{font-size:13px;color:var(--fg-dim);border-bottom:1px solid var(--fg-faint);padding-bottom:1px}
+.exit:hover{color:var(--fg);border-color:var(--fg)}
+
+main{padding:clamp(40px,6vw,72px) 0 100px}
+.view{display:none} .view.on{display:block}
+
+/* ---------- disease grid ---------- */
+.mods{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:40px}
+.mod{border:1px solid var(--line);background:var(--bg-2);border-radius:3px;overflow:hidden;
+  text-align:left;cursor:pointer;transition:border-color .3s ease,transform .35s var(--ease)}
+.mod:hover{border-color:rgba(221,216,202,.5);transform:translateY(-3px)}
+.mod figure{height:140px;overflow:hidden;background:#28322d}
+.mod figure img{width:100%;height:100%;object-fit:cover;transition:transform .8s var(--ease)}
+.mod:hover figure img{transform:scale(1.05)}
+.mod .b{padding:18px 20px 20px}
+.mod h3{font-size:18px;font-weight:300;margin-bottom:3px}
+.mod .meta{font-size:12px;color:var(--fg-faint);display:flex;justify-content:space-between;margin-top:12px}
+.tag{display:inline-block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  border:1px solid var(--fg-faint);border-radius:2px;padding:2px 7px;color:var(--fg-dim)}
+
+/* ---------- form ---------- */
+.formhead{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between;margin-bottom:8px}
+.grp{margin-top:38px}
+.grp>h2{padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.fields{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.f label{display:block;font-size:12px;color:var(--fg-dim);margin-bottom:6px}
+.f label i{font-style:normal;color:var(--fg-faint)}
+.f input,.f select{width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:2px;
+  padding:11px 12px;font-size:14px;transition:border-color .25s ease}
+.f input:focus,.f select:focus{outline:none;border-color:var(--accent)}
+.f .rng{font-size:11px;color:var(--fg-faint);margin-top:5px}
+.f.bad input{border-color:var(--high)}
+.err{color:var(--high);font-size:11px;margin-top:5px;display:none}
+.f.bad .err{display:block}
+
+.actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:40px;
+  padding-top:26px;border-top:1px solid var(--line)}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:12px 22px;border-radius:2px;
+  font-size:13px;border:1px solid transparent;cursor:pointer;transition:all .3s ease}
+.btn-solid{background:var(--fg);color:var(--bg)}
+.btn-solid:hover{background:#efeade}
+.btn-solid:disabled{opacity:.5;cursor:default}
+.btn-ghost{border-color:var(--fg-faint);color:var(--fg-dim);background:none}
+.btn-ghost:hover{border-color:var(--fg);color:var(--fg)}
+
+/* ---------- result ---------- */
+.res{display:grid;grid-template-columns:340px 1fr;gap:56px;align-items:start;margin-top:36px}
+.gauge{border:1px solid var(--line);background:var(--bg-2);border-radius:3px;padding:30px;text-align:center}
+.gauge svg{width:100%;height:auto;overflow:visible}
+.gauge .score{font-size:56px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.gauge .band{font-size:12px;letter-spacing:.18em;text-transform:uppercase;margin-top:10px}
+.gauge .thr{font-size:12px;color:var(--fg-faint);margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+
+.factors li{margin-bottom:16px}
+.factors .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.factors .top span:last-child{color:var(--fg-faint)}
+.factors .bar{height:3px;background:rgba(221,216,202,.13);position:relative;overflow:hidden;border-radius:2px}
+.factors .bar i{position:absolute;inset:0 100% 0 0;background:var(--accent);
+  transition:right 1s var(--ease)}
+
+.reasons{margin-top:30px}
+.reasons li{font-size:14px;color:var(--fg-dim);padding:11px 0 11px 20px;
+  border-top:1px solid var(--line);position:relative}
+.reasons li::before{content:"";position:absolute;left:0;top:18px;width:7px;height:1px;background:var(--accent)}
+
+.note{margin-top:26px;padding:14px 18px;border-left:2px solid var(--fg-faint);
+  background:var(--bg-2);font-size:13px;color:var(--fg-dim)}
+.note b{color:var(--fg);font-weight:400}
+.note.warn{border-left-color:var(--accent)}
+
+.disclaimer{margin-top:44px;padding:14px 18px;border-left:2px solid var(--accent);
+  background:var(--bg-2);font-size:13px;color:var(--fg-dim)}
+.disclaimer b{color:var(--accent);font-weight:400}
+
+.saveline{margin-top:36px;padding-top:26px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.saveline p{font-size:13px;margin-right:auto}
+
+.msg{padding:14px 18px;border-radius:2px;border:1px solid var(--line);background:var(--bg-2);
+  font-size:14px;color:var(--fg-dim);margin-top:24px}
+.msg.error{border-color:var(--high);color:var(--high)}
+.spin{display:inline-block;width:13px;height:13px;border:1.5px solid rgba(43,53,48,.3);
+  border-top-color:var(--bg);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media (max-width:1000px){
+  .mods{grid-template-columns:repeat(2,1fr)}
+  .fields{grid-template-columns:repeat(2,1fr)}
+  .res{grid-template-columns:1fr;gap:34px}
+}
+@media (max-width:620px){
+  .mods,.fields{grid-template-columns:1fr}
+  .steps{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hrow">
+    <a href="/landing.html" class="brand">VITALS</a>
+    <div class="steps">
+      <b id="s1" class="on">Choose</b><i>→</i><b id="s2">Enter data</b><i>→</i><b id="s3">Result</b>
+    </div>
+    <nav class="hnav">
+      <a href="/report.html">Report analysis</a>
+      <a href="/app.html" class="on">Single screening</a>
+      <a href="/care.html">Find care</a>
+      <a href="/landing.html">Exit</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ 1. choose ============ -->
+  <section class="view on" id="v-choose">
+    <div class="wrap">
+      <p class="eyebrow">Step one</p>
+      <h1 style="margin-top:14px;max-width:18ch">What would you like to screen for?</h1>
+      <p style="margin-top:14px;max-width:60ch">
+        Each condition has its own trained model and its own input schema. Pick one to
+        begin — you can load a worked example if you don't have your own values to hand.
+      </p>
+      <div class="mods" id="grid"></div>
+      <div id="grid-msg"></div>
+    </div>
+  </section>
+
+  <!-- ============ 2. form ============ -->
+  <section class="view" id="v-form">
+    <div class="wrap">
+      <div class="formhead">
+        <div>
+          <p class="eyebrow">Step two</p>
+          <h1 id="f-name" style="margin-top:12px">—</h1>
+          <p id="f-blurb" style="margin-top:10px;max-width:62ch"></p>
+        </div>
+        <button class="btn btn-ghost" id="btn-sample">Use sample data</button>
+      </div>
+      <div id="f-caveat"></div>
+      <form id="form" novalidate></form>
+      <div class="actions">
+        <button class="btn btn-solid" id="btn-submit" form="form">Get result</button>
+        <button class="btn btn-ghost" id="btn-back">← Choose another</button>
+        <span id="f-msg" style="font-size:13px;color:var(--fg-faint)"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. result ============ -->
+  <section class="view" id="v-result">
+    <div class="wrap">
+      <p class="eyebrow">Step three</p>
+      <h1 id="r-name" style="margin-top:12px">—</h1>
+
+      <div class="res">
+        <div class="gauge">
+          <svg viewBox="0 0 200 116" aria-hidden="true">
+            <path d="M14 104 A86 86 0 0 1 186 104" fill="none"
+                  stroke="rgba(221,216,202,.14)" stroke-width="10" stroke-linecap="round"/>
+            <path id="arc" d="M14 104 A86 86 0 0 1 186 104" fill="none"
+                  stroke="var(--accent)" stroke-width="10" stroke-linecap="round"/>
+            <line id="tick" x1="100" y1="12" x2="100" y2="26"
+                  stroke="var(--fg-faint)" stroke-width="2"/>
+          </svg>
+          <div class="score" id="r-score">—</div>
+          <div class="band" id="r-band">—</div>
+          <div class="thr" id="r-thr"></div>
+        </div>
+
+        <div>
+          <h2 style="margin-bottom:20px">What drove this result</h2>
+          <ul class="factors" id="r-factors"></ul>
+          <ul class="reasons" id="r-reasons"></ul>
+          <div id="r-method"></div>
+          <div id="r-caveat"></div>
+        </div>
+      </div>
+
+      <div class="saveline">
+        <p>Results are not stored. Signing in would let you keep a history and track a condition over time.</p>
+        <button class="btn btn-ghost" id="btn-signin">Save this result</button>
+        <button class="btn btn-ghost" id="btn-retake">Edit values</button>
+        <button class="btn btn-solid" id="btn-another">Screen another →</button>
+      </div>
+
+      <p class="disclaimer">
+        <b>Not a diagnostic tool.</b> This is a risk indicator produced from the values you
+        entered, for informational use only — always consult a qualified physician.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ============================================================
+   VITALS screening client
+
+   The API owns the schema: every form here is rendered from
+   /api/diseases, so the inputs, bounds and encodings can never
+   drift from what the models were trained on.
+   ============================================================ */
+const API = window.VITALS_API || (location.port === '8000' || location.port === '' ? '/api' : 'http://127.0.0.1:8000/api');
+
+/* the anatomical render for each slug — presentation only, so it lives
+   here rather than in the API (a second client would choose differently) */
+const IMG = {
+  'diabetes':'m-diabetes', 'heart-disease':'m-heart', 'parkinsons':'m-parkinsons',
+  'liver-disease':'m-liver', 'hepatitis':'m-hepatitis', 'lung-cancer':'m-lung',
+  'kidney-disease':'m-kidney', 'breast-cancer':'m-breast', 'jaundice':'m-jaundice',
+};
+
+let DISEASES = [];
+let current = null;
+
+const $ = s => document.querySelector(s);
+const show = id => {
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === id));
+  const step = { 'v-choose': 1, 'v-form': 2, 'v-result': 3 }[id];
+  [1, 2, 3].forEach(n => $('#s' + n).classList.toggle('on', n <= step));
+  scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+/* ---------- 1. load the registry ---------- */
+async function boot() {
+  try {
+    const r = await fetch(API + '/diseases');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    DISEASES = await r.json();
+  } catch (e) {
+    $('#grid-msg').innerHTML =
+      `<div class="msg error">Could not reach the API at <b>${API}</b>. ` +
+      `Start it with <code>uvicorn app.main:app</code> in <code>apps/api</code>, then reload.</div>`;
+    return;
+  }
+  $('#grid').innerHTML = DISEASES.map(d => `
+    <button class="mod" data-slug="${d.slug}">
+      <figure><img src="/img/${IMG[d.slug] || 'm-diabetes'}.jpg" alt="" loading="lazy"></figure>
+      <div class="b">
+        <h3>${d.name}</h3>
+        <span class="tag">${d.model_available ? (d.probability_available ? 'Model + rules' : 'Rule-scored') : 'Rules only'}</span>
+        <div class="meta"><span>${d.field_count} inputs</span><span>Threshold ${d.threshold}</span></div>
+      </div>
+    </button>`).join('');
+  document.querySelectorAll('.mod').forEach(b =>
+    b.addEventListener('click', () => openForm(b.dataset.slug)));
+}
+
+/* ---------- 2. build the form from the schema ---------- */
+function openForm(slug) {
+  current = DISEASES.find(d => d.slug === slug);
+  $('#f-name').textContent = current.name;
+  $('#f-blurb').textContent = current.blurb || '';
+  $('#f-caveat').innerHTML = current.caveat
+    ? `<div class="note warn"><b>About this model.</b> ${current.caveat}</div>` : '';
+  $('#f-msg').textContent = '';
+
+  // group the fields the way the API grouped them
+  const groups = {};
+  current.fields.forEach(f => (groups[f.group || 'General'] ||= []).push(f));
+
+  $('#form').innerHTML = Object.entries(groups).map(([name, fields]) => `
+    <div class="grp">
+      <h2>${name}</h2>
+      <div class="fields">
+        ${fields.map(f => fieldHTML(f)).join('')}
+      </div>
+    </div>`).join('');
+  show('v-form');
+}
+
+function fieldHTML(f) {
+  const id = 'i_' + btoa(f.name).replace(/=/g, '');
+  const hint = f.unit ? ` <i>(${f.unit})</i>` : '';
+  if (f.choices && f.choices.length) {
+    return `<div class="f" data-name="${encodeURIComponent(f.name)}">
+      <label for="${id}">${f.label}${hint}</label>
+      <select id="${id}">${f.choices.map(c =>
+        `<option value="${c.value}"${c.value === f.default ? ' selected' : ''}>${c.label}</option>`).join('')}</select>
+      ${f.help ? `<div class="rng">${f.help}</div>` : ''}
+    </div>`;
+  }
+  return `<div class="f" data-name="${encodeURIComponent(f.name)}">
+    <label for="${id}">${f.label}${hint}</label>
+    <input id="${id}" type="number" step="${f.step}" min="${f.minimum}" max="${f.maximum}" value="${f.default}">
+    <div class="rng">${f.minimum} – ${f.maximum}</div>
+    <div class="err">Enter a value between ${f.minimum} and ${f.maximum}</div>
+  </div>`;
+}
+
+/* Sample data = the schema's own defaults, which are clinically sensible
+   mid-range values. This exists because almost nobody knows their serum
+   creatinine offhand, and an empty form is where demos die. */
+$('#btn-sample').addEventListener('click', () => {
+  current.fields.forEach(f => {
+    const el = document.querySelector(`.f[data-name="${encodeURIComponent(f.name)}"] input, .f[data-name="${encodeURIComponent(f.name)}"] select`);
+    if (el) el.value = f.default;
+  });
+  $('#f-msg').textContent = 'Loaded a worked example.';
+});
+
+/* ---------- 3. validate + submit ---------- */
+function collect() {
+  const payload = {};
+  let ok = true;
+  current.fields.forEach(f => {
+    const box = document.querySelector(`.f[data-name="${encodeURIComponent(f.name)}"]`);
+    const el = box.querySelector('input,select');
+    const v = parseFloat(el.value);
+    const bad = Number.isNaN(v) || v < f.minimum || v > f.maximum;
+    box.classList.toggle('bad', bad);
+    if (bad) ok = false; else payload[f.name] = v;
+  });
+  return ok ? payload : null;
+}
+
+$('#form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const payload = collect();
+  if (!payload) { $('#f-msg').textContent = 'Some values are outside the accepted range.'; return; }
+
+  const btn = $('#btn-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Scoring…';
+  $('#f-msg').textContent = '';
+  try {
+    const r = await fetch(`${API}/predict/${current.slug}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      // the API reports every bad field at once
+      const detail = (data.errors || []).map(x => `${x.field}: ${x.message}`).join('; ');
+      throw new Error(detail || data.detail || ('HTTP ' + r.status));
+    }
+    renderResult(data);
+  } catch (err) {
+    $('#f-msg').textContent = 'Could not score this submission — ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Get result';
+  }
+});
+
+/* ---------- 4. result ---------- */
+const BAND_COLOUR = { low: 'var(--low)', moderate: 'var(--moderate)', high: 'var(--high)' };
+
+function renderResult(d) {
+  $('#r-name').textContent = d.disease;
+  $('#r-score').textContent = d.risk_score;
+
+  const colour = BAND_COLOUR[d.band] || 'var(--accent)';
+  $('#r-band').textContent = d.band + ' risk';
+  $('#r-band').style.color = colour;
+
+  // semicircular arc: 270px of path, filled proportionally
+  const arc = $('#arc');
+  const len = arc.getTotalLength();
+  arc.style.stroke = colour;
+  arc.style.strokeDasharray = len;
+  arc.style.strokeDashoffset = len;
+  requestAnimationFrame(() => {
+    arc.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.16,1,.3,1)';
+    arc.style.strokeDashoffset = len * (1 - d.risk_score / 100);
+  });
+
+  // threshold tick, placed along the same semicircle
+  const a = Math.PI * (1 - d.threshold / 100);
+  $('#tick').setAttribute('x1', 100 + 86 * Math.cos(a));
+  $('#tick').setAttribute('y1', 104 - 86 * Math.sin(a));
+  $('#tick').setAttribute('x2', 100 + 70 * Math.cos(a));
+  $('#tick').setAttribute('y2', 104 - 70 * Math.sin(a));
+
+  $('#r-thr').innerHTML = `Flagged above <b style="color:var(--fg)">${d.threshold}</b> — ` +
+    (d.flagged ? 'this result is above that line.' : 'this result is below that line.');
+
+  $('#r-factors').innerHTML = (d.factors || []).map(f => {
+    const pct = f.max_points ? Math.round((f.points / f.max_points) * 100) : 0;
+    return `<li>
+      <div class="top"><span>${f.label}</span><span>${f.points} of ${f.max_points}</span></div>
+      <div class="bar"><i style="right:${100 - pct}%;background:${colour}"></i></div>
+    </li>`;
+  }).join('');
+
+  $('#r-reasons').innerHTML = (d.reasons || []).map(r => `<li>${r}</li>`).join('');
+
+  // how the number was actually produced — the honest bit
+  const prob = d.model_probability === null || d.model_probability === undefined
+    ? 'the model could not give a calibrated probability, so the score is rule-based'
+    : `the model put this at ${Math.round(d.model_probability * 100)}%`;
+  $('#r-method').innerHTML = `<div class="note"><b>How this was scored.</b> ` +
+    `Method: ${d.method}. Rule score ${d.rule_score}; ` +
+    (d.model_available ? prob : 'no trained model ships for this condition, so it is scored on clinical thresholds alone') + `.</div>`;
+
+  $('#r-caveat').innerHTML = d.caveat ? `<div class="note warn"><b>Caveat.</b> ${d.caveat}</div>` : '';
+  show('v-result');
+}
+
+/* ---------- navigation ---------- */
+$('#btn-back').addEventListener('click', () => show('v-choose'));
+$('#btn-retake').addEventListener('click', () => show('v-form'));   // values are still in the DOM
+$('#btn-another').addEventListener('click', () => show('v-choose'));
+$('#btn-signin').addEventListener('click', () => {
+  alert('Accounts are not built yet.\n\nThe intent: sign in here, after you have a result, so the result you just produced gets saved rather than asking you to register before you have seen anything.');
+});
+
+boot();
+</script>
+<script>window.VITALS_API = 'http://127.0.0.1:8000/api';</script>
+<script src="/vera.js" defer></script>
+</body>
+</html>

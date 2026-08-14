@@ -1,0 +1,193 @@
+/* ---------------------------------------------------------------
+   VITALS brand layer
+   Overrides the Elementis preloader + wordmark.
+   Palette is inherited from the original theme:
+     bg #2b3530   fg #d1ccbf
+   --------------------------------------------------------------- */
+
+:root{
+  --v-bg:#2b3530;
+  --v-fg:#d1ccbf;
+  --v-ease:cubic-bezier(.16,1,.3,1);   /* ~ gsap power4.out */
+}
+
+/* kill the original ELEMENTIS preloader; ours replaces it */
+.preloader{ opacity:0 !important; pointer-events:none !important; }
+
+/* ---------------- our curtain ---------------- */
+#vitals-pre{
+  position:fixed; inset:0; z-index:99999;
+  background:var(--v-bg);
+  display:grid; place-items:center;
+  transform:translateY(0);
+}
+#vitals-pre.lift{
+  transform:translateY(-100%);
+  transition:transform 1.1s var(--v-ease);
+}
+#vitals-pre.done{ display:none; }
+
+#vitals-pre .mark{ width:min(64vw,500px); overflow:visible; }
+
+#vitals-pre .ltr{
+  opacity:0; transform:translateY(26px);
+  transition:opacity .9s var(--v-ease), transform .9s var(--v-ease);
+}
+#vitals-pre .ltr.in{ opacity:1; transform:translateY(0); }
+
+#vitals-pre #v-trace{
+  fill:none; stroke:var(--v-fg); stroke-width:2.5;
+  stroke-linecap:round; stroke-linejoin:round; opacity:.85;
+}
+#vitals-pre #v-trace.fade{ opacity:0; transition:opacity .7s ease; }
+
+#vitals-pre #v-eye{
+  opacity:0; transform-box:fill-box; transform-origin:50% 100%;
+  transform:scaleY(.4);
+}
+#vitals-pre #v-eye.in{
+  opacity:1; transform:scaleY(1);
+  transition:opacity .45s ease, transform .6s var(--v-ease);
+}
+
+#vitals-pre .mark.out{
+  opacity:0; transform:translateY(-14px) scale(.985);
+  transition:opacity .8s ease, transform .9s var(--v-ease);
+}
+
+/* ---------------- hero legibility scrim ----------------
+   The replacement hero footage is bright and clinical, where the original
+   was dark jungle. White nav text over it was close to unreadable, so a
+   scrim is laid over the video only — the imagery still reads, the type
+   sits on a dark ground the way the design assumes. Remove this if the
+   hero is ever regenerated dark. */
+.hero video,
+.hero.is--video video{
+  filter: brightness(.62) saturate(.8) contrast(1.05) !important;
+}
+
+.hero::after{
+  content:"";
+  position:absolute; inset:0;
+  pointer-events:none;
+  z-index:1;
+  background:
+    linear-gradient(to bottom,
+      rgba(43,53,48,.86) 0%,
+      rgba(43,53,48,.42) 26%,
+      rgba(43,53,48,.24) 55%,
+      rgba(43,53,48,.70) 100%);
+}
+/* the mask layer the hero animates must stay above the scrim */
+.hero .hero-mask,
+.hero > *:not(video):not(img):not(picture){ position:relative; z-index:2; }
+header, .header, nav{ position:relative; z-index:60; }
+
+/* ---------------- responsive navbar ---------------- */
+/* The inherited bar assumes a wide desktop. Below 1100px the six-link
+   row collided with the CTA; the links now yield to the hamburger,
+   which is where the nine conditions live anyway. */
+@media (max-width:1100px){
+  header nav ul,
+  .header nav ul,
+  [class*="header"] ul[class*="menu"]{ display:none !important; }
+}
+@media (max-width:767.98px){
+  .v-logo{ height:14px; }
+  /* the CTA keeps its box but stops crowding the burger */
+  [class*="header"] a[class*="button"],
+  [class*="header"] [class*="btn"]{
+    padding:8px 14px !important;
+    font-size:11px !important;
+    letter-spacing:.12em !important;
+  }
+}
+@media (max-width:420px){
+  /* on the narrowest phones the CTA label alone is enough */
+  [class*="header"] a[class*="button"] span[class*="icon"]{ display:none !important; }
+}
+
+/* ---------------- "Try Demo" button ----------------
+   Ghost weight on purpose: "Start Screening" stays the primary action,
+   this is the lower-commitment path beside it. */
+.v-demo{
+  display:inline-flex; align-items:center;
+  margin-right:14px;
+  padding:11px 18px;
+  border:1px solid rgba(209,204,191,.34);
+  border-radius:2px;
+  color:var(--v-fg);
+  font-size:13px; letter-spacing:.02em; line-height:1;
+  white-space:nowrap;
+  transition:border-color .3s ease, background .3s ease;
+}
+.v-demo:hover{
+  border-color:rgba(209,204,191,.75);
+  background:rgba(209,204,191,.08);
+}
+@media (max-width:767.98px){
+  .v-demo{ padding:8px 12px; font-size:11px; margin-right:8px; }
+}
+@media (max-width:520px){
+  /* on the narrowest phones one button is enough */
+  .v-demo{ display:none; }
+}
+
+/* ---------------- HIDDEN, NOT DELETED ----------------
+   Everything in this block is Elementis furniture that MDPS has no use
+   for. It is hidden rather than cut out, because the markup and
+   components stay in the build and some of it will be reused.
+
+   TO BRING ANY OF IT BACK: delete the line. Nothing else was changed.  */
+
+/* the bottom contact/data-capture form and its image
+   (markup, 9 inputs, validation and FormPhoneNumber all still present) */
+section.form-section{ display:none !important; }
+
+/* Elementis's own social accounts — not ours to link to */
+ul.socmed-list,
+footer .social{ display:none !important; }
+
+/* cookie notice: analytics and GTM are disabled in this build, so the
+   page sets nothing worth consenting to */
+.popup-cookies{ display:none !important; }
+
+/* ---------------- hero strapline ----------------
+   The inherited copy was two lines and sat 40px off the bottom. Ours runs
+   to three, so the last line was clipped by the hero's overflow:hidden.
+   Lifting it clears the third line and keeps it off the bottom edge. */
+.hero .text-bottom{ bottom:calc(56/var(--vw)*var(--multiplier)) !important; }
+@media (max-width:767.98px){
+  .hero .text-bottom{ bottom:calc(84/var(--vw)*var(--multiplier)) !important; }
+}
+
+/* ---------------- cursor ----------------
+   Over the hero, `.base-cursor` swapped in a 57px play-triangle. That
+   invited a click that would only pause an autoplaying loop, so the
+   triangle goes and the follower stays a small plain dot. */
+.base-cursor .play svg{ display:none !important; }
+.base-cursor .play{
+  width:13px !important;
+  height:13px !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  padding:0 !important;
+  border:none !important;
+  border-radius:50% !important;
+  background:rgba(209,204,191,.92) !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+}
+
+/* ---------------- header wordmark ---------------- */
+.v-logo{ display:block; height:17px; width:auto; }
+.v-logo text{
+  fill:currentColor;
+  font-family:"Basis Grotesque",-apple-system,"Segoe UI",sans-serif;
+  font-weight:300;
+}
+
+@media (prefers-reduced-motion:reduce){
+  #vitals-pre .ltr,#vitals-pre #v-eye{ opacity:1 !important; transform:none !important; transition:none !important; }
+  #vitals-pre.lift{ transition:none; }
+}

@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VITALS — Report analysis</title>
+
+<style>
+@font-face{font-family:"Basis";src:url("/fonts/BasisGrotesqueArabicPro-Light.woff2") format("woff2");font-weight:300;font-display:swap}
+@font-face{font-family:"Basis";src:url("/fonts/BasisGrotesqueArabicPro-Regular.woff2") format("woff2");font-weight:400;font-display:swap}
+
+:root{
+  --bg:#2b3530; --bg-2:#232c28; --bg-3:#1e2622; --fg:#ddd8ca;
+  --fg-dim:rgba(221,216,202,.70); --fg-faint:rgba(221,216,202,.34);
+  --line:rgba(221,216,202,.18); --accent:#e0b878;
+  --low:#8fbf9f; --moderate:#e0b878; --high:#e08a6b; --na:rgba(221,216,202,.22);
+  --ease:cubic-bezier(.16,1,.3,1); --pad:clamp(20px,5vw,64px); --maxw:1240px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{background:var(--bg);color:var(--fg);font-family:"Basis",-apple-system,"Segoe UI",sans-serif;
+  font-weight:300;line-height:1.5;min-height:100vh}
+a{color:inherit;text-decoration:none} ul{list-style:none} img{display:block;max-width:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 var(--pad)}
+h1{font-size:clamp(28px,3.6vw,44px);font-weight:300;line-height:1.1;letter-spacing:-.015em}
+h2{font-size:clamp(19px,2vw,25px);font-weight:300;letter-spacing:-.01em}
+h3{font-size:17px;font-weight:300}
+.eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--fg-dim)}
+p{color:var(--fg-dim)}
+
+header{position:sticky;top:0;z-index:80;background:rgba(35,44,40,.93);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;gap:22px;height:64px}
+.brand{font-size:15px;letter-spacing:.32em;font-weight:400}
+.hnav{margin-left:auto;display:flex;gap:22px;font-size:13px;color:var(--fg-dim)}
+.hnav a:hover{color:var(--fg)}
+.hnav a.on{color:var(--accent)}
+.hnav a.on::after{content:"";display:block;height:1px;background:var(--accent);margin-top:3px}
+
+main{padding:clamp(38px,5vw,64px) 0 110px}
+
+.btn{display:inline-flex;align-items:center;gap:9px;padding:12px 22px;border-radius:2px;
+  font-size:13px;border:1px solid transparent;cursor:pointer;transition:all .3s ease}
+.btn-solid{background:var(--fg);color:var(--bg)}
+.btn-solid:hover{background:#efeade}
+.btn-solid:disabled{opacity:.5;cursor:default}
+.btn-ghost{border-color:var(--fg-faint);color:var(--fg-dim);background:none}
+.btn-ghost:hover{border-color:var(--fg);color:var(--fg)}
+
+/* ---------- input ---------- */
+.drop{border:1px dashed var(--fg-faint);border-radius:3px;background:var(--bg-2);padding:0;margin-top:28px;
+  transition:border-color .3s ease,background .3s ease}
+.drop.over{border-color:var(--accent);background:var(--bg-3)}
+textarea{width:100%;min-height:260px;background:none;border:0;padding:22px;resize:vertical;
+  font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:13px;line-height:1.7}
+textarea:focus{outline:none}
+.dropbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 18px;border-top:1px solid var(--line)}
+.dropbar span{font-size:12px;color:var(--fg-faint);margin-right:auto}
+
+/* ---------- extracted values ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.chip{border:1px solid var(--line);background:var(--bg-2);border-radius:2px;padding:7px 12px;font-size:12.5px}
+.chip b{color:var(--accent);font-weight:400}
+.chip.miss{opacity:.45}
+
+.stage2{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-top:26px;
+  padding-top:22px;border-top:1px solid var(--line)}
+.stage2 p{font-size:13px;margin-right:auto}
+
+/* ---------- overview chart ---------- */
+.panel{border:1px solid var(--line);background:var(--bg-2);border-radius:3px;padding:clamp(22px,3vw,34px)}
+.rank{margin-top:26px}
+.rank .row{display:grid;grid-template-columns:190px 1fr 66px;gap:16px;align-items:center;
+  padding:13px 0;border-top:1px solid var(--line)}
+.rank .row:first-child{border-top:0}
+.rank .nm{font-size:14px;display:flex;align-items:center;gap:9px}
+.rank .nm em{font-style:normal;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-faint)}
+.rank .track{position:relative;height:22px;background:rgba(221,216,202,.07);border-radius:2px;overflow:hidden}
+.rank .fill{position:absolute;inset:0 100% 0 0;border-radius:2px;transition:right 1.1s var(--ease)}
+.rank .thr{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--fg-faint)}
+.rank .thr::after{content:"";position:absolute;top:-4px;left:-2px;border-left:2.5px solid transparent;
+  border-right:2.5px solid transparent;border-top:4px solid var(--fg-faint)}
+.rank .val{text-align:right;font-size:15px}
+.rank .val small{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-faint)}
+.legend{display:flex;flex-wrap:wrap;gap:18px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);font-size:11.5px;color:var(--fg-faint)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+
+/* ---------- per-condition ---------- */
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:26px}
+.dz{border:1px solid var(--line);background:var(--bg-2);border-radius:3px;overflow:hidden}
+.dz.na{opacity:.62}
+.dzhead{display:flex;gap:16px;padding:20px;border-bottom:1px solid var(--line);align-items:center}
+.dzhead img{width:54px;height:54px;object-fit:cover;border-radius:3px;flex:0 0 auto}
+.dzhead .t{flex:1}
+.dzhead h3{margin-bottom:2px}
+.dzhead .sub{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-faint)}
+.dzhead .sc{text-align:right}
+.dzhead .sc b{display:block;font-size:30px;font-weight:300;line-height:1}
+.dzhead .sc span{font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+.dzbody{padding:20px}
+.cov{height:3px;background:rgba(221,216,202,.12);border-radius:2px;overflow:hidden;margin:4px 0 14px}
+.cov i{display:block;height:100%;background:var(--fg-faint)}
+.covtxt{font-size:11.5px;color:var(--fg-faint);margin-bottom:16px}
+.fac li{margin-bottom:11px}
+.fac .tp{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px}
+.fac .tp span:last-child{color:var(--fg-faint)}
+.fac .br{height:3px;background:rgba(221,216,202,.12);border-radius:2px;position:relative;overflow:hidden}
+.fac .br i{position:absolute;inset:0 100% 0 0;transition:right .9s var(--ease)}
+.rsn{margin-top:16px}
+.rsn li{font-size:13px;color:var(--fg-dim);padding:9px 0 9px 18px;border-top:1px solid var(--line);position:relative}
+.rsn li::before{content:"";position:absolute;left:0;top:16px;width:6px;height:1px;background:var(--accent)}
+.prec{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.prec h4{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg-faint);font-weight:400;margin-bottom:10px}
+.prec ol{list-style:none;counter-reset:p}
+.prec li{counter-increment:p;font-size:13px;color:var(--fg-dim);padding:6px 0 6px 26px;position:relative}
+.prec li::before{content:counter(p);position:absolute;left:0;top:6px;width:16px;height:16px;border-radius:50%;
+  border:1px solid var(--fg-faint);font-size:9px;display:grid;place-items:center;color:var(--fg-faint)}
+.src{font-size:10.5px;color:var(--fg-faint);margin-top:10px;font-style:italic}
+
+.note{margin-top:22px;padding:13px 17px;border-left:2px solid var(--fg-faint);background:var(--bg-3);
+  font-size:13px;color:var(--fg-dim)}
+.note b{color:var(--fg);font-weight:400}
+.note.warn{border-left-color:var(--accent)}
+.disclaimer{margin-top:40px;padding:14px 18px;border-left:2px solid var(--accent);background:var(--bg-2);
+  font-size:13px;color:var(--fg-dim)}
+.disclaimer b{color:var(--accent);font-weight:400}
+.msg{padding:13px 17px;border:1px solid var(--line);background:var(--bg-2);border-radius:2px;
+  font-size:13.5px;color:var(--fg-dim);margin-top:20px}
+.msg.error{border-color:var(--high);color:var(--high)}
+.spin{display:inline-block;width:13px;height:13px;border:1.5px solid rgba(43,53,48,.3);
+  border-top-color:var(--bg);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hидden{display:none}
+#results{display:none}
+
+@media (max-width:900px){
+  .cards{grid-template-columns:1fr}
+  .rank .row{grid-template-columns:130px 1fr 56px;gap:10px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hrow">
+    <a href="/landing.html" class="brand">VITALS</a>
+    <nav class="hnav">
+      <a href="/report.html" class="on">Report analysis</a>
+      <a href="/app.html">Single screening</a>
+      <a href="/care.html">Find care</a>
+      <a href="/landing.html">Exit</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <p class="eyebrow">Report analysis</p>
+  <h1 style="margin-top:14px;max-width:20ch">Paste a lab report. Screen everything it can reach.</h1>
+  <p style="margin-top:14px;max-width:66ch">
+    Upload a PDF or paste the text. Values are read out of the report and routed to
+    the matching model for each condition — each one scored by its own estimator,
+    with the inputs it actually received shown alongside the result.
+  </p>
+
+  <div class="drop" id="drop">
+    <textarea id="txt" spellcheck="false"
+      placeholder="Paste the text of a blood report here — or drop a PDF onto this box.
+
+e.g.
+  Fasting Blood Glucose      185 mg/dL
+  Total Cholesterol          243 mg/dL
+  Serum Creatinine           1.9 mg/dL
+  Total Bilirubin            2.4 mg/dL
+  SGPT (ALT)                 78 U/L"></textarea>
+    <div class="dropbar">
+      <span id="dropinfo">Drop a PDF or .txt here, or paste the text below.</span>
+      <input type="file" id="file" accept=".pdf,.txt,.csv,.md,application/pdf" style="display:none">
+      <button class="btn btn-ghost" id="btn-file">Upload PDF</button>
+      <button class="btn btn-ghost" id="btn-sample">Load sample report</button>
+      <button class="btn btn-ghost" id="btn-clear">Clear</button>
+      <button class="btn btn-solid" id="btn-run">Read report</button>
+    </div>
+  </div>
+
+  <div id="parsed"></div>
+  <div id="msg"></div>
+
+  <!-- ================= results ================= -->
+  <section id="results">
+
+    <div class="panel" style="margin-top:44px">
+      <h2>Risk across every condition this report can reach</h2>
+      <p style="font-size:13.5px;margin-top:8px">
+        Each bar is that condition's own risk score out of 100. The notch marks the
+        threshold at which the model flags a result — thresholds differ per condition.
+      </p>
+      <div class="rank" id="rank"></div>
+      <div class="legend">
+        <span><i style="background:var(--low)"></i>Low</span>
+        <span><i style="background:var(--moderate)"></i>Moderate</span>
+        <span><i style="background:var(--high)"></i>High</span>
+        <span><i style="background:var(--na)"></i>Not derivable from a lab report</span>
+      </div>
+    </div>
+
+    <div id="summary"></div>
+    <div class="cards" id="cards"></div>
+
+    <p class="disclaimer">
+      <b>Not a diagnostic tool.</b> These are risk indicators computed from the values
+      found in your report, for informational use only — always consult a qualified
+      physician. Precautions shown are general guidance, not a treatment plan.
+    </p>
+  </section>
+
+</div>
+</main>
+
+<script>
+const API = window.VITALS_API || (location.port === '8000' || location.port === '' ? '/api' : 'http://127.0.0.1:8000/api');
+
+const IMG = {
+  'diabetes':'m-diabetes','heart-disease':'m-heart','parkinsons':'m-parkinsons',
+  'liver-disease':'m-liver','hepatitis':'m-hepatitis','lung-cancer':'m-lung',
+  'kidney-disease':'m-kidney','breast-cancer':'m-breast','jaundice':'m-jaundice',
+};
+
+/* Conditions a blood report simply cannot reach. Parkinson's is scored from
+   voice-acoustic measures, lung cancer from a symptom survey, breast cancer
+   from cell-nucleus morphometry on a needle aspirate. Running them on
+   defaults would produce a confident-looking number that means nothing, so
+   they are reported as unavailable instead. */
+const NOT_DERIVABLE = {
+  'parkinsons':   'Scored from 22 voice-acoustic measures (jitter, shimmer, HNR) — needs a sustained-phonation recording, not bloodwork.',
+  'lung-cancer':  'Scored from a 15-item symptom and risk-factor survey — needs answers, not lab values.',
+  'breast-cancer':'Scored from 30 cell-nucleus measurements taken from a fine-needle aspirate — needs cytology, not bloodwork.',
+};
+
+/* ---------- extraction ----------
+   Each analyte lists the aliases seen on real reports and the API fields it
+   feeds. One analyte often feeds several conditions — bilirubin matters to
+   liver, jaundice and hepatitis alike. */
+const ANALYTES = [
+  { key:'glucose',   label:'Glucose',            unit:'mg/dL',
+    aliases:['fasting blood glucose','fasting blood sugar','blood glucose fasting','fasting glucose','blood sugar','glucose','fbs'],
+    feeds:{ 'diabetes':'Glucose', 'kidney-disease':'bgr' } },
+  { key:'bmi',       label:'BMI',                unit:'',
+    aliases:['body mass index','bmi'], feeds:{ 'diabetes':'BMI' } },
+  { key:'systolic',  label:'Systolic BP',        unit:'mmHg',
+    aliases:['systolic blood pressure','systolic bp','blood pressure','systolic'],
+    feeds:{ 'diabetes':'BloodPressure', 'heart-disease':'trestbps', 'kidney-disease':'bp' } },
+  { key:'insulin',   label:'Insulin',            unit:'µU/mL',
+    aliases:['serum insulin','insulin'], feeds:{ 'diabetes':'Insulin' } },
+  { key:'age',       label:'Age',                unit:'yrs',
+    aliases:['age'], feeds:{ 'diabetes':'Age','heart-disease':'age','liver-disease':'Age','hepatitis':'age','kidney-disease':'age','jaundice':'Age' } },
+  { key:'chol',      label:'Total cholesterol',  unit:'mg/dL',
+    aliases:['total cholesterol','serum cholesterol','cholesterol'], feeds:{ 'heart-disease':'chol' } },
+  { key:'tbil',      label:'Total bilirubin',    unit:'mg/dL',
+    aliases:['total bilirubin','bilirubin total','s. bilirubin (total)','serum bilirubin','bilirubin'],
+    feeds:{ 'liver-disease':'Total_Bilirubin','jaundice':'Total_Bilirubin','hepatitis':'bilirubin' } },
+  { key:'dbil',      label:'Direct bilirubin',   unit:'mg/dL',
+    aliases:['direct bilirubin','conjugated bilirubin','bilirubin direct'],
+    feeds:{ 'liver-disease':'Direct_Bilirubin','jaundice':'Direct_Bilirubin' } },
+  { key:'alp',       label:'Alkaline phosphatase', unit:'U/L',
+    aliases:['alkaline phosphatase','alkaline phosphotase','alk phos','alp'],
+    feeds:{ 'liver-disease':'Alkaline_Phosphotase','jaundice':'Alkaline_Phosphotase' } },
+  { key:'alt',       label:'ALT (SGPT)',         unit:'U/L',
+    aliases:['alanine aminotransferase','sgpt (alt)','alt (sgpt)','sgpt','alt'],
+    feeds:{ 'liver-disease':'Alamine_Aminotransferase','jaundice':'Alamine_Aminotransferase' } },
+  { key:'ast',       label:'AST (SGOT)',         unit:'U/L',
+    aliases:['aspartate aminotransferase','sgot (ast)','ast (sgot)','sgot','ast'],
+    feeds:{ 'liver-disease':'Aspartate_Aminotransferase','jaundice':'Aspartate_Aminotransferase' } },
+  { key:'tprot',     label:'Total protein',      unit:'g/dL',
+    aliases:['total protein','total protiens','total proteins'], feeds:{ 'liver-disease':'Total_Protiens' } },
+  { key:'alb',       label:'Albumin',            unit:'g/dL',
+    aliases:['serum albumin','albumin'], feeds:{ 'liver-disease':'Albumin','hepatitis':'albumin' } },
+  { key:'agr',       label:'A/G ratio',          unit:'',
+    aliases:['albumin globulin ratio','a/g ratio','ag ratio'], feeds:{ 'liver-disease':'Albumin_and_Globulin_Ratio' } },
+  { key:'creat',     label:'Serum creatinine',   unit:'mg/dL',
+    aliases:['serum creatinine','creatinine'], feeds:{ 'kidney-disease':'sc' } },
+  { key:'urea',      label:'Blood urea',         unit:'mg/dL',
+    aliases:['blood urea nitrogen','blood urea','urea','bun'], feeds:{ 'kidney-disease':'bu' } },
+  { key:'hemo',      label:'Haemoglobin',        unit:'g/dL',
+    aliases:['haemoglobin','hemoglobin','hb'], feeds:{ 'kidney-disease':'hemo' } },
+  { key:'sod',       label:'Sodium',             unit:'mEq/L',
+    aliases:['sodium','na+'], feeds:{ 'kidney-disease':'sod' } },
+  { key:'pot',       label:'Potassium',          unit:'mEq/L',
+    aliases:['potassium','k+'], feeds:{ 'kidney-disease':'pot' } },
+  { key:'pcv',       label:'PCV / haematocrit',  unit:'%',
+    aliases:['packed cell volume','haematocrit','hematocrit','pcv'], feeds:{ 'kidney-disease':'pcv' } },
+  { key:'wbc',       label:'WBC count',          unit:'/µL',
+    aliases:['white blood cell count','total leucocyte count','wbc count','wbc','tlc'], feeds:{ 'kidney-disease':'wc' } },
+  { key:'rbc',       label:'RBC count',          unit:'M/µL',
+    aliases:['red blood cell count','rbc count','rbc'], feeds:{ 'kidney-disease':'rc' } },
+  { key:'sg',        label:'Urine sp. gravity',  unit:'',
+    aliases:['specific gravity','sp gravity'], feeds:{ 'kidney-disease':'sg' } },
+];
+
+const NUM = '([0-9]+(?:\\.[0-9]+)?)';
+
+/* Extraction runs on the API: it reads PDFs directly and applies the same
+   analyte table the scoring service uses, so the values a model receives are
+   parsed by one implementation rather than two that can drift apart. */
+let LAST_META = null;
+
+async function readReport() {
+  const file = document.getElementById('file').files[0];
+  let r;
+  if (file) {
+    const fd = new FormData();
+    fd.append('file', file, file.name);
+    r = await fetch(API + '/extract', { method: 'POST', body: fd });
+  } else {
+    r = await fetch(API + '/extract/text', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: document.getElementById('txt').value }),
+    });
+  }
+  const data = await r.json();
+  if (!r.ok) {
+    const err = new Error(data.detail || ('HTTP ' + r.status));
+    err.fromApi = true;      // the service answered; it just rejected the input
+    throw err;
+  }
+
+  LAST_META = { source: data.source, pages: data.pages, characters: data.characters, method: data.method };
+  const found = {};
+  data.values.forEach(v => { found[v.key] = { value: v.value, label: v.label, unit: v.unit }; });
+  return found;
+}
+/* ---------- precautions ----------
+   The four marked `dataset` come from mdps-streamlit/datasets/disease_precaution.csv.
+   The rest are not in that file, so they are general guidance and labelled as such. */
+const PRECAUTIONS = {
+  'diabetes':      { src:'dataset', items:['Have a balanced diet','Exercise regularly','Consult a doctor','Book a follow-up'] },
+  'heart-disease': { src:'dataset', items:['Call an ambulance if acute','Chew or swallow aspirin if advised','Keep calm and rest','Seek urgent assessment'] },
+  'hepatitis':     { src:'dataset', items:['Consult the nearest hospital','Discuss vaccination','Eat healthily','Follow prescribed medication'] },
+  'jaundice':      { src:'dataset', items:['Drink plenty of water','Consider milk thistle','Eat fruit and high-fibre food','Follow prescribed medication'] },
+  'liver-disease': { src:'general', items:['Stop alcohol consumption','Avoid fatty and fried food','Repeat liver function tests as advised','See a hepatologist'] },
+  'kidney-disease':{ src:'general', items:['Control blood pressure and blood sugar','Reduce salt intake','Stay hydrated unless told otherwise','See a nephrologist for eGFR testing'] },
+};
+
+/* ---------- run ---------- */
+let DISEASES = [];
+const $ = s => document.querySelector(s);
+
+const SAMPLE = `CITY DIAGNOSTIC LABORATORY
+Patient: A. Sharma        Age: 52        Sex: Male
+Sample: Fasting venous blood
+
+BIOCHEMISTRY
+  Fasting Blood Glucose        185      mg/dL     (70-100)
+  Serum Insulin                 130      uU/mL
+  Body Mass Index               34.2
+  Systolic Blood Pressure       148      mmHg
+
+LIPID PROFILE
+  Total Cholesterol             243      mg/dL     (<200)
+
+LIVER FUNCTION TEST
+  Total Bilirubin               2.4      mg/dL     (0.3-1.2)
+  Direct Bilirubin              0.9      mg/dL
+  Alkaline Phosphatase          214      U/L
+  SGPT (ALT)                     78      U/L
+  SGOT (AST)                     66      U/L
+  Total Protein                  6.4     g/dL
+  Albumin                        3.1     g/dL
+  A/G Ratio                      0.94
+
+RENAL PROFILE
+  Serum Creatinine               1.9     mg/dL     (0.6-1.2)
+  Blood Urea                      58     mg/dL
+  Sodium                         136     mEq/L
+  Potassium                      4.8     mEq/L
+
+HAEMATOLOGY
+  Haemoglobin                    10.9    g/dL
+  Packed Cell Volume             34      %
+  WBC Count                     9800     /uL
+  RBC Count                      3.9     M/uL`;
+
+$('#btn-file').addEventListener('click', () => $('#file').click());
+$('#file').addEventListener('change', () => {
+  const f = $('#file').files[0];
+  $('#dropinfo').textContent = f ? `${f.name} ready — press Extract & screen.` : 'Drop a PDF or .txt here, or paste the text below.';
+});
+
+$('#btn-sample').addEventListener('click', () => { $('#txt').value = SAMPLE; $('#file').value = ''; $('#dropinfo').textContent = 'Drop a PDF or .txt here, or paste the text below.'; $('#msg').innerHTML = ''; });
+$('#btn-clear').addEventListener('click', () => {
+  $('#txt').value = ''; $('#parsed').innerHTML = ''; $('#msg').innerHTML = ''; $('#results').style.display = 'none';
+});
+
+/* drag-and-drop a .txt */
+const drop = $('#drop');
+['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', ev => {
+  const f = ev.dataTransfer.files[0];
+  if (!f) return;
+  if (/\.pdf$/i.test(f.name)) {
+    const dt = new DataTransfer(); dt.items.add(f);
+    $('#file').files = dt.files;
+    $('#dropinfo').textContent = `${f.name} ready — press Extract & screen.`;
+    return;
+  }
+  if (!/\.(txt|csv|md)$/i.test(f.name)) {
+    $('#dropinfo').textContent = `${f.name} is not a PDF or text file.`;
+    return;
+  }
+  f.text().then(t => { $('#txt').value = t; $('#file').value = ''; $('#dropinfo').textContent = `Loaded ${f.name}.`; });
+});
+
+$('#btn-run').addEventListener('click', run);
+
+/* Two stages on purpose. Stage one reads the document and shows exactly what
+   it found, so the inputs can be checked before anything is scored. Stage two
+   sends those numbers to the models. Nothing is scored until you say so. */
+let FOUND = null;
+
+async function run() {
+  const text = $('#txt').value.trim();
+  $('#msg').innerHTML = '';
+  $('#results').style.display = 'none';
+  if (!text && !$('#file').files[0]) {
+    $('#msg').innerHTML = '<div class="msg">Upload a PDF, paste a report, or load the sample.</div>';
+    return;
+  }
+
+  const btn = $('#btn-run');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Reading…';
+  try {
+    if (!DISEASES.length) {
+      const r = await fetch(API + '/diseases');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      DISEASES = await r.json();
+    }
+    FOUND = await readReport();
+    renderChips(FOUND);
+    if (!Object.keys(FOUND).length) {
+      $('#msg').innerHTML = '<div class="msg error">No recognisable values found. Check the report has each value on the same line as its name.</div>';
+      return;
+    }
+    $('#parsed').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    $('#msg').innerHTML = e.fromApi
+      ? `<div class="msg error">${e.message}</div>`
+      : `<div class="msg error">Could not reach the API at <b>${API}</b> — ${e.message}. Start it and try again.</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Read report';
+  }
+}
+
+async function screenNow() {
+  if (!FOUND) return;
+  const btn = $('#btn-screen');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Scoring…';
+  $('#msg').innerHTML = '';
+  try {
+    // one payload per condition: the report's value where we have it, the
+    // schema default otherwise, clamped to the bounds the model was trained on
+    const jobs = DISEASES.filter(d => !NOT_DERIVABLE[d.slug]).map(d => {
+      const payload = {}; let hits = 0;
+      d.fields.forEach(f => {
+        let v = null;
+        for (const a of ANALYTES) {
+          if (a.feeds[d.slug] === f.name && FOUND[a.key] !== undefined) { v = FOUND[a.key].value; break; }
+        }
+        const lower = f.name.toLowerCase();
+        if (v === null && (lower === 'sex' || lower === 'gender') && FOUND.sex) v = FOUND.sex.value;
+        if (v === null) v = f.default; else hits++;
+        payload[f.name] = Math.min(f.maximum, Math.max(f.minimum, v));
+      });
+      return { d, payload, hits, total: d.fields.length };
+    });
+
+    const results = await Promise.all(jobs.map(async j => {
+      const r = await fetch(`${API}/predict/${j.d.slug}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(j.payload),
+      });
+      if (!r.ok) return { ...j, error: 'HTTP ' + r.status };
+      return { ...j, res: await r.json() };
+    }));
+
+    render(results, FOUND);
+    $('#results').style.display = 'block';
+    $('#results').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) {
+    $('#msg').innerHTML = `<div class="msg error">Scoring failed — ${e.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Screen all conditions →';
+  }
+}
+function renderChips(found) {
+  const got = ANALYTES.filter(a => found[a.key] !== undefined);
+  const missing = ANALYTES.filter(a => found[a.key] === undefined);
+  $('#parsed').innerHTML = `
+    <h2 style="margin-top:36px">Found ${got.length} of ${ANALYTES.length} recognised values</h2>
+    ${LAST_META ? `<p style="font-size:12.5px;margin-top:8px">Read from ${LAST_META.source === 'pdf'
+      ? LAST_META.pages + '-page PDF' : 'pasted text'} · ${LAST_META.characters.toLocaleString()} characters.</p>` : ''}
+    <div class="chips">
+      ${got.map(a => `<span class="chip">${a.label} <b>${found[a.key].value}</b> ${a.unit}</span>`).join('')}
+      ${found.sex ? `<span class="chip">Sex <b>${found.sex.unit}</b></span>` : ''}
+    </div>
+    ${missing.length ? `<p style="font-size:12.5px;margin-top:14px">Not found, so the model default is used for these:
+      ${missing.map(a => a.label).join(', ')}.</p>` : ''}
+    <div class="stage2">
+      <p>Check the values above, then score them.</p>
+      <button class="btn btn-solid" id="btn-screen">Screen all conditions &rarr;</button>
+    </div>`;
+  document.getElementById('btn-screen').addEventListener('click', screenNow);
+}
+
+const COLOUR = b => b === 'low' ? 'var(--low)' : b === 'high' ? 'var(--high)' : 'var(--moderate)';
+
+function render(results, found) {
+  // ---- ranked overview, highest risk first, then the non-derivable ones ----
+  const ranked = [...results].filter(r => r.res).sort((a, b) => b.res.risk_score - a.res.risk_score);
+  const na = DISEASES.filter(d => NOT_DERIVABLE[d.slug]);
+
+  $('#rank').innerHTML = ranked.map(r => `
+    <div class="row">
+      <div class="nm">${r.d.name}<em>${r.hits}/${r.total} from report</em></div>
+      <div class="track">
+        <div class="fill" style="right:${100 - r.res.risk_score}%;background:${COLOUR(r.res.band)}"></div>
+        <div class="thr" style="left:${r.res.threshold}%"></div>
+      </div>
+      <div class="val">${r.res.risk_score}<small>${r.res.band}</small></div>
+    </div>`).join('') + na.map(d => `
+    <div class="row">
+      <div class="nm">${d.name}<em>not derivable</em></div>
+      <div class="track"><div class="fill" style="right:100%;background:var(--na)"></div></div>
+      <div class="val" style="color:var(--fg-faint)">—</div>
+    </div>`).join('');
+
+  const flagged = ranked.filter(r => r.res.flagged);
+  $('#summary').innerHTML = `<div class="note ${flagged.length ? 'warn' : ''}">
+    <b>${flagged.length ? flagged.length + ' of ' + ranked.length + ' conditions flagged.' : 'Nothing flagged.'}</b>
+    ${flagged.length ? flagged.map(f => f.d.name).join(', ') + ' scored above their own thresholds. '
+                     : 'Every score sat below its condition\'s threshold. '}
+    Scores are only as good as their inputs — check the coverage figure on each card before reading much into it.
+  </div>`;
+
+  // ---- per-condition detail ----
+  $('#cards').innerHTML = ranked.map(r => {
+    const d = r.res, pct = Math.round((r.hits / r.total) * 100);
+    const prec = PRECAUTIONS[r.d.slug];
+    return `
+    <article class="dz">
+      <div class="dzhead">
+        <img src="/img/${IMG[r.d.slug]}.jpg" alt="">
+        <div class="t"><h3>${r.d.name}</h3><div class="sub">${d.method}</div></div>
+        <div class="sc"><b style="color:${COLOUR(d.band)}">${d.risk_score}</b>
+          <span style="color:${COLOUR(d.band)}">${d.band}</span></div>
+      </div>
+      <div class="dzbody">
+        <div class="cov"><i style="width:${pct}%"></i></div>
+        <div class="covtxt">${r.hits} of ${r.total} inputs came from your report (${pct}%) — the rest use model defaults.
+          Flagged above ${d.threshold}.</div>
+
+        <ul class="fac">${(d.factors || []).slice(0, 5).map(f => {
+          const p = f.max_points ? Math.round((f.points / f.max_points) * 100) : 0;
+          return `<li><div class="tp"><span>${f.label}</span><span>${f.points} / ${f.max_points}</span></div>
+            <div class="br"><i style="right:${100 - p}%;background:${COLOUR(d.band)}"></i></div></li>`;
+        }).join('')}</ul>
+
+        <ul class="rsn">${(d.reasons || []).map(x => `<li>${x}</li>`).join('')}</ul>
+
+        ${prec ? `<div class="prec">
+          <h4>Precautions</h4>
+          <ol>${prec.items.map(i => `<li>${i}</li>`).join('')}</ol>
+          <div class="src">General guidance — not a treatment plan.</div>
+        </div>` : ''}
+
+
+      </div>
+    </article>`;
+  }).join('') + na.map(d => `
+    <article class="dz na">
+      <div class="dzhead">
+        <img src="/img/${IMG[d.slug]}.jpg" alt="">
+        <div class="t"><h3>${d.name}</h3><div class="sub">Not derivable</div></div>
+        <div class="sc"><b style="color:var(--fg-faint)">—</b></div>
+      </div>
+      <div class="dzbody"><p style="font-size:13.5px">${NOT_DERIVABLE[d.slug]}</p>
+        <p style="font-size:13px;margin-top:12px"><a href="/app.html" style="border-bottom:1px solid var(--fg-faint)">Screen it directly →</a></p>
+      </div>
+    </article>`).join('');
+}
+</script>
+<script>window.VITALS_API = 'http://127.0.0.1:8000/api';</script>
+<script src="/vera.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VITALS — Health predictions that tell you why</title>
+<meta name="description" content="VITALS is an open-source screening tool that assesses risk across nine conditions and explains which of your values drove the result.">
+
+<style>
+/* ============================================================
+   VITALS — Multiple Disease Prediction System
+   Hand-authored. Every figure comes from the project report.
+   ============================================================ */
+
+@font-face{font-family:"Basis";src:url("/fonts/BasisGrotesqueArabicPro-Light.woff2") format("woff2");font-weight:300;font-display:swap}
+@font-face{font-family:"Basis";src:url("/fonts/BasisGrotesqueArabicPro-Regular.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Basis";src:url("/fonts/BasisGrotesqueArabicPro-Medium.woff2") format("woff2");font-weight:500;font-display:swap}
+
+:root{
+  --bg:#2b3530; --bg-2:#232c28; --fg:#ddd8ca;
+  --fg-dim:rgba(221,216,202,.70); --fg-faint:rgba(221,216,202,.34);
+  --line:rgba(221,216,202,.18);
+  /* A single warm accent, used only on figures and the one active nav mark.
+     Complementary to the pine so it lifts without fighting the palette. */
+  --accent:#e0b878;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --pad:clamp(20px,5vw,64px); --maxw:1320px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{background:var(--bg);color:var(--fg);font-family:"Basis",-apple-system,"Segoe UI",sans-serif;font-weight:300;line-height:1.5;overflow-x:hidden}
+body.locked{overflow:hidden}
+img,video{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+ul{list-style:none}
+
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 var(--pad)}
+.eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--fg-dim);margin-bottom:22px}
+h1,h2,h3{font-weight:300;line-height:1.08;letter-spacing:-.015em}
+h2{font-size:clamp(30px,4.4vw,58px);margin-bottom:20px}
+h3{font-size:clamp(19px,1.7vw,24px)}
+p{color:var(--fg-dim)}
+section{padding:clamp(72px,10vw,150px) 0;position:relative}
+
+.rise{opacity:0;transform:translateY(30px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.rise.in{opacity:1;transform:none}
+
+/* ---------- preloader ---------- */
+#pre{position:fixed;inset:0;z-index:9999;background:var(--bg);display:grid;place-items:center}
+#pre.lift{transform:translateY(-100%);transition:transform 1.1s var(--ease)}
+#pre.gone{display:none}
+#pre svg{width:min(64vw,500px);overflow:visible}
+#pre .ltr{opacity:0;transform:translateY(24px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+#pre .ltr.in{opacity:1;transform:none}
+#trace{fill:none;stroke:var(--fg);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+#trace.fade{opacity:0;transition:opacity .7s ease}
+#eye{opacity:0;transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(.4)}
+#eye.in{opacity:1;transform:scaleY(1);transition:opacity .45s ease,transform .6s var(--ease)}
+
+/* ---------- nav ---------- */
+header{position:fixed;top:0;left:0;right:0;z-index:900;padding:24px 0;transition:background .4s ease,box-shadow .4s ease,padding .4s ease}
+header.stuck{background:rgba(35,44,40,.86);backdrop-filter:blur(14px);box-shadow:0 1px 0 var(--line);padding:14px 0}
+.navrow{display:flex;align-items:center;gap:28px}
+.brand{font-size:17px;letter-spacing:.34em;font-weight:400;white-space:nowrap}
+.navlinks{display:flex;gap:30px;margin-left:auto;font-size:14px}
+.navlinks a{color:var(--fg-dim);transition:color .25s ease;position:relative;padding:4px 0}
+.navlinks a:hover,.navlinks a.active{color:var(--fg)}
+.navlinks a.active::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:1px;background:var(--accent)}
+.navcta{display:flex;align-items:center;gap:12px}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:11px 20px;border-radius:2px;font-size:13px;white-space:nowrap;transition:background .3s ease,border-color .3s ease,color .3s ease}
+.btn-ghost{border:1px solid var(--fg-faint);color:var(--fg-dim)}
+.btn-ghost:hover{border-color:var(--fg);color:var(--fg)}
+.btn-solid{background:var(--fg);color:var(--bg);font-weight:400}
+.btn-solid:hover{background:#e6e1d4}
+.burger{display:flex;flex-direction:column;gap:5px;padding:9px;background:none;border:0;cursor:pointer}
+.burger span{display:block;width:22px;height:1px;background:var(--fg);transition:transform .35s var(--ease),opacity .25s ease}
+.burger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.burger.open span:nth-child(2){opacity:0}
+.burger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+/* ---------- fullscreen menu ---------- */
+#menu{position:fixed;inset:0;z-index:880;background:var(--bg);padding:110px var(--pad) 40px;overflow-y:auto;
+  opacity:0;visibility:hidden;transform:translateY(-14px);transition:opacity .5s var(--ease),transform .6s var(--ease),visibility .5s}
+#menu.open{opacity:1;visibility:visible;transform:none}
+#menu h4{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--fg-faint);font-weight:400;margin-bottom:26px}
+.menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:var(--maxw);margin:0 auto}
+.menu-card{border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--bg-2);transition:border-color .3s ease,transform .35s var(--ease)}
+.menu-card:hover{border-color:rgba(209,204,191,.5);transform:translateY(-3px)}
+.menu-card figure{height:120px;overflow:hidden}
+.menu-card img{width:100%;height:100%;object-fit:cover}
+.menu-card span{display:block;padding:14px 16px;font-size:15px}
+.menu-card span i{display:block;font-style:normal;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-faint);margin-top:4px}
+
+/* ---------- hero ---------- */
+/* padding-bottom clears the marquee band pinned to the hero's bottom edge */
+.hero{min-height:100svh;display:flex;align-items:flex-end;padding:150px 0 clamp(96px,12vw,150px);position:relative;overflow:hidden}
+.hero-media{position:absolute;inset:0;z-index:0}
+.hero-media video,.hero-media img{width:100%;height:100%;object-fit:cover;filter:brightness(.66) saturate(.95)}
+.hero-media::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(to bottom,rgba(43,53,48,.9) 0%,rgba(43,53,48,.5) 34%,rgba(43,53,48,.55) 62%,rgba(43,53,48,.97) 100%)}
+.hero .wrap{position:relative;z-index:2;width:100%}
+.hero h1{font-size:clamp(38px,6.4vw,86px);max-width:16ch;margin-bottom:24px}
+.hero h1 em{font-style:italic;font-family:Georgia,"Times New Roman",serif}
+.hero .lede{font-size:clamp(16px,1.35vw,19px);max-width:58ch;color:rgba(209,204,191,.84);margin-bottom:34px}
+.hero-cta{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:44px}
+.linkish{font-size:13px;color:var(--fg-dim);border-bottom:1px solid var(--fg-faint);padding-bottom:2px}
+.linkish:hover{color:var(--fg);border-color:var(--fg)}
+
+/* giant scrolling condition marquee */
+.hero-marquee{position:absolute;left:0;right:0;bottom:0;z-index:1;overflow:hidden;pointer-events:none;
+  mask-image:linear-gradient(to right,transparent,#000 8%,#000 92%,transparent);
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 8%,#000 92%,transparent)}
+.hero-marquee div{display:flex;width:max-content;animation:slide 34s linear infinite;font-size:clamp(46px,8vw,120px);
+  line-height:1;letter-spacing:-.02em;color:rgba(209,204,191,.14);white-space:nowrap}
+.hero-marquee span{padding-right:.5em}
+@keyframes slide{to{transform:translateX(-50%)}}
+
+.trust{display:flex;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:24px;max-width:900px}
+.trust div{padding-right:38px;margin-right:38px;border-right:1px solid var(--line)}
+.trust div:last-child{border-right:0;margin-right:0;padding-right:0}
+.trust b{display:block;font-size:clamp(20px,2.1vw,27px);font-weight:300;letter-spacing:-.01em;color:var(--accent)}
+.trust span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-dim)}
+.disclaimer{margin-top:56px;max-width:70ch;padding:13px 18px;border-left:2px solid rgba(209,204,191,.4);
+  background:rgba(35,44,40,.55);font-size:13px;color:var(--fg-dim)}
+.disclaimer b{color:var(--accent);font-weight:400}
+
+/* ---------- grids ---------- */
+.grid{display:grid;gap:26px}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+/* `.g2` is used on its own, not alongside `.grid`, so it has to declare
+   display itself — without it the two columns stacked full-width. */
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:56px;align-items:center}
+.card{border:1px solid var(--line);background:var(--bg-2);padding:30px;border-radius:3px}
+.card .num{font-size:clamp(30px,3.6vw,46px);line-height:1;margin-bottom:14px;color:var(--accent)}
+.card p{font-size:14px}
+.card figure{margin:-30px -30px 24px;height:170px;overflow:hidden}
+.card figure img{width:100%;height:100%;object-fit:cover;filter:brightness(.9) saturate(1.02)}
+
+/* ---------- image depth ----------
+   Images only. Text, panels and cards in front of them scroll normally —
+   that difference in rate is the whole effect.
+
+   The image is scaled up inside a clipped frame rather than resized, so the
+   drift always has room and can never expose an edge. These rules set only
+   `transform`, so they don't collide with the sizing rules already declared
+   for .card figure img and .mod figure img. */
+.px{overflow:hidden}
+.px > img,.px > video{
+  will-change:transform;
+  transform:translate3d(0,0,0) scale(1.16);
+  backface-visibility:hidden;
+}
+/* standalone feature images need their own frame and sizing */
+.px-frame{border-radius:3px;aspect-ratio:4/3}
+.px-frame > img{width:100%;height:100%;object-fit:cover;filter:brightness(.95) saturate(1.02)}
+@media (prefers-reduced-motion:reduce){
+  .px > img{transform:none}
+}
+.step{padding-top:30px;border-top:1px solid var(--line)}
+.step .n{font-size:11px;letter-spacing:.2em;color:var(--fg-faint);margin-bottom:14px}
+.step h3{margin-bottom:10px}.step p{font-size:14px}
+
+/* ---------- modules ---------- */
+.mods{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.mod{border:1px solid var(--line);background:var(--bg-2);border-radius:3px;overflow:hidden;transition:border-color .35s ease,transform .35s var(--ease)}
+.mod:hover{border-color:rgba(209,204,191,.45);transform:translateY(-3px)}
+.mod figure{height:158px;overflow:hidden;background:#28322d}
+.mod figure img{width:100%;height:100%;object-fit:cover;transition:transform .8s var(--ease)}
+.mod:hover figure img{transform:scale(1.05)}
+.mod .body{padding:20px 22px 24px}
+.mod h3{font-size:19px;margin-bottom:4px}
+.mod .algo{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-faint)}
+.mod .bar{height:2px;background:rgba(209,204,191,.14);margin:16px 0 10px;position:relative;overflow:hidden}
+.mod .bar i{position:absolute;inset:0 100% 0 0;background:var(--accent);transition:right 1.2s var(--ease)}
+.mod.in .bar i{right:var(--rest)}
+.mod .meta{display:flex;justify-content:space-between;font-size:12px;color:var(--fg-dim)}
+
+/* ---------- explain ---------- */
+.compare{display:grid;grid-template-columns:repeat(2,1fr);gap:22px}
+.panel{border:1px solid var(--line);border-radius:3px;padding:28px;background:var(--bg-2)}
+.panel.bad{opacity:.72}
+.panel .tag{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--fg-faint);margin-bottom:18px}
+.verdict{font-size:26px;letter-spacing:.04em;margin-bottom:16px}
+.panel:not(.bad) .verdict{color:var(--accent)}
+.reasons li{font-size:14px;color:var(--fg-dim);padding:11px 0 11px 20px;border-top:1px solid var(--line);position:relative}
+.reasons li::before{content:"";position:absolute;left:0;top:18px;width:7px;height:1px;background:var(--fg-faint)}
+.reasons li b{color:var(--fg);font-weight:400}
+
+/* ---------- band ---------- */
+.band{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:34px 0;background:var(--bg-2)}
+.band-track{display:flex;gap:22px;width:max-content;animation:slide 46s linear infinite}
+.band-track .px{width:126px;height:126px;border-radius:3px;flex:0 0 auto}
+.band-track img{width:100%;height:100%;object-fit:cover}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:3px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+th,td{padding:13px 16px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-faint);font-weight:400}
+td{color:var(--fg-dim)} td:first-child{color:var(--fg)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:rgba(209,204,191,.03)}
+tr.total td{color:var(--fg);border-top:1px solid var(--fg-faint)}
+
+.lims{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;background:var(--line);border:1px solid var(--line)}
+.lim{background:var(--bg);padding:28px 30px}
+.lim h3{font-size:17px;margin-bottom:9px}.lim p{font-size:14px}
+
+/* ---------- footer ---------- */
+footer{border-top:1px solid var(--line);padding:70px 0 40px;background:var(--bg-2)}
+.footrow{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:40px;margin-bottom:52px}
+.footrow h4{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--fg-faint);font-weight:400;margin-bottom:16px}
+.footrow li{margin-bottom:9px;font-size:14px}
+.footrow li a{color:var(--fg-dim)}.footrow li a:hover{color:var(--fg)}
+.foot-bottom{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:26px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-faint)}
+
+.dot{position:fixed;top:0;left:0;width:11px;height:11px;border-radius:50%;background:rgba(209,204,191,.9);
+  pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .25s ease,height .25s ease,opacity .25s ease}
+.dot.big{width:28px;height:28px;opacity:.45}
+
+/* The dot replaces the pointer rather than accompanying it. Only on devices
+   with a real pointer — a touch device has no cursor to hide, and hiding it
+   on one that cannot render the dot would leave nothing at all. */
+@media (pointer:fine){
+  html,body,a,button,input,select,textarea,label,summary,
+  /* these carry their own `cursor` declaration, so they need naming to beat it */
+  .burger,.mod,.menu-card,.btn,.linkish{cursor:none}
+}
+
+@media (max-width:1000px){
+  .g3,.g4,.mods,.compare,.lims,.footrow,.menu-grid{grid-template-columns:repeat(2,1fr)}
+  .g2{grid-template-columns:1fr;gap:32px}
+  .navlinks{display:none}
+}
+@media (max-width:640px){
+  .g3,.g4,.mods,.compare,.lims,.footrow,.menu-grid{grid-template-columns:1fr}
+  .trust div{border-right:0;padding-right:0;margin:0 30px 16px 0}
+  .hero{padding-top:120px}
+  .hero-marquee{display:none}
+  .dot{display:none}
+  .btn{padding:10px 15px;font-size:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  .rise{opacity:1;transform:none;transition:none}
+  .band-track,.hero-marquee div{animation:none}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ preloader ============ -->
+<div id="pre">
+  <svg viewBox="0 0 580 176" aria-label="VITALS">
+    <g fill="#d1ccbf" font-family="Basis,sans-serif" font-size="64" font-weight="300" text-anchor="middle">
+      <text class="ltr" x="90"  y="110">V</text>
+      <text class="ltr" x="250" y="110">T</text>
+      <text class="ltr" x="330" y="110">A</text>
+      <text class="ltr" x="410" y="110">L</text>
+      <text class="ltr" x="490" y="110">S</text>
+      <text id="eye" x="170" y="110">I</text>
+    </g>
+    <path id="trace" d="M 8 136 L 108 136 q 8 0 12 -7 q 4 7 12 7 L 156 136 L 164 136 L 170 66 L 176 154
+                        L 182 136 L 300 136 q 10 0 16 -9 q 6 9 16 9 L 572 136"/>
+  </svg>
+</div>
+
+<div class="dot" id="dot" aria-hidden="true"></div>
+
+<!-- ============ nav ============ -->
+<header id="hdr">
+  <div class="wrap navrow">
+    <a href="#top" class="brand">VITALS</a>
+    <nav class="navlinks" aria-label="Primary">
+      <a href="#how">How It Works</a>
+      <a href="#modules">Screenings</a>
+      <a href="#accuracy">Accuracy</a>
+      <a href="#about">About</a>
+    </nav>
+    <div class="navcta">
+      <a class="btn btn-solid" href="/app.html">Try Demo</a>
+      <a class="btn btn-ghost" href="/report.html">Report analyser</a>
+      <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+
+<!-- ============ fullscreen menu ============ -->
+<div id="menu" aria-hidden="true">
+  <div class="wrap"><h4>Screen for a condition</h4></div>
+  <div class="menu-grid" id="menugrid"></div>
+</div>
+
+<main id="top">
+
+<!-- ============ hero ============ -->
+<section class="hero">
+  <div class="hero-media px">
+    <video src="/img/hero.mp4" poster="/img/hero-wide.jpg" autoplay muted loop playsinline></video>
+  </div>
+  <div class="hero-marquee" aria-hidden="true"><div id="heromq"></div></div>
+
+  <div class="wrap">
+    <p class="eyebrow rise">Multiple Disease Prediction System</p>
+    <h1 class="rise">Health predictions that tell you <em>why</em>.</h1>
+    <p class="lede rise">
+      VITALS is an open-source screening tool that assesses risk across nine
+      conditions — diabetes, heart, kidney, liver and more — and explains exactly
+      which of your values drove the result.
+    </p>
+    <div class="hero-cta rise">
+      <a class="btn btn-solid" href="/app.html">Try the Live Demo →</a>
+      <a class="btn btn-ghost" href="/report.html">Report analyser</a>
+      <a class="linkish" href="https://github.com/ankitsingathia/MDPS" target="_blank" rel="noopener">View on GitHub</a>
+    </div>
+    <div class="trust rise">
+      <div><b>9</b><span>Disease modules</span></div>
+      <div><b>10</b><span>Benchmark datasets</span></div>
+      <div><b>81.4</b><span>Usability score</span></div>
+      <div><b>Every result</b><span>Explained</span></div>
+    </div>
+    <p class="disclaimer rise">
+      <b>Not a diagnostic tool.</b> Results are risk indicators for informational use
+      only — always consult a qualified physician.
+    </p>
+  </div>
+</section>
+
+<!-- ============ problem ============ -->
+<section id="problem">
+  <div class="wrap">
+    <p class="eyebrow rise">The problem</p>
+    <h2 class="rise" style="max-width:20ch">Most of these conditions are found too late.</h2>
+    <div class="grid g3" style="margin-top:52px">
+      <article class="card rise"><figure class="px"><img src="/img/wrist.jpg" alt="" loading="lazy"></figure>
+        <div class="num">77M</div>
+        <p>People in India live with type 2 diabetes — a large share undiagnosed until the disease has already progressed.</p></article>
+      <article class="card rise"><figure class="px"><img src="/img/vapour.jpg" alt="" loading="lazy"></figure>
+        <div class="num">#1</div>
+        <p>Cardiovascular disease remains the single largest cause of death globally, and early risk signals are routinely missed.</p></article>
+      <article class="card rise"><figure class="px"><img src="/img/caustic.jpg" alt="" loading="lazy"></figure>
+        <div class="num">3 steps</div>
+        <p>Travel, a specialist appointment and out-of-pocket lab work stand between most people and a first screening.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ how it works ============ -->
+<section id="how" style="background:var(--bg-2)">
+  <div class="wrap">
+    <p class="eyebrow rise">How it works</p>
+    <h2 class="rise" style="max-width:18ch">Four steps, from your values to a result you can act on.</h2>
+    <div class="grid g4" style="margin-top:56px">
+      <div class="step rise"><div class="n">01</div><h3>Enter values</h3><p>Type in the measurements you already have from a routine report — or load a worked example.</p></div>
+      <div class="step rise"><div class="n">02</div><h3>Model inference</h3><p>A classifier trained for that specific condition scores the submission.</p></div>
+      <div class="step rise"><div class="n">03</div><h3>Explanation</h3><p>A rule layer names the values that drove the score, in plain language.</p></div>
+      <div class="step rise"><div class="n">04</div><h3>Save or export</h3><p>Keep it in your history or export a PDF to take to a physician.</p></div>
+    </div>
+    <div class="g2" style="margin-top:74px">
+      <div class="rise"><div class="px px-frame"><img src="/img/dishes.jpg" alt="" loading="lazy"></div></div>
+      <div class="rise">
+        <h3 style="margin-bottom:16px">One interface, nine models</h3>
+        <p style="font-size:15px">Each condition has its own estimator, its own input schema and its own decision threshold. The interface is shared so the experience is identical whichever you screen for.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ modules ============ -->
+<section id="modules">
+  <div class="wrap">
+    <p class="eyebrow rise">Screenings</p>
+    <h2 class="rise" style="max-width:20ch">Nine conditions, each with its own trained model.</h2>
+    <p class="rise" style="max-width:62ch;margin-top:14px">Accuracy is measured on a held-out 20% test split, stratified by class, never used during training or tuning.</p>
+    <div class="mods" style="margin-top:56px" id="modgrid"></div>
+  </div>
+</section>
+
+<div class="band" aria-hidden="true"><div class="band-track" id="band"></div></div>
+
+<!-- ============ explainability ============ -->
+<section id="explain">
+  <div class="wrap">
+    <p class="eyebrow rise">Explainability</p>
+    <h2 class="rise" style="max-width:20ch">A label is not an answer.</h2>
+    <p class="rise" style="max-width:62ch;margin-top:14px">Most screening tools return a class and stop. VITALS names the measurements that moved the result, with the threshold each one crossed.</p>
+    <div class="compare rise" style="margin-top:52px">
+      <div class="panel bad"><div class="tag">Typical tool</div><div class="verdict">POSITIVE</div>
+        <p style="font-size:14px">No indication of which inputs mattered, how close the result was to the threshold, or what to check next.</p></div>
+      <div class="panel"><div class="tag">VITALS</div><div class="verdict">Elevated risk</div>
+        <ul class="reasons">
+          <li><b>Glucose 185 mg/dL</b> — above the diabetic threshold of 140</li>
+          <li><b>BMI 34.2</b> — in the obese range (≥ 30)</li>
+          <li><b>Blood pressure 148</b> — above the 140 hypertension cut-off</li>
+          <li>Age and pedigree function contributed less to this result</li>
+        </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ under the hood ============ -->
+<section id="hood" style="background:var(--bg-2)">
+  <div class="wrap">
+    <p class="eyebrow rise">Under the hood</p>
+    <h2 class="rise" style="max-width:20ch">Public benchmarks, cited and reproducible.</h2>
+    <p class="rise" style="max-width:62ch;margin-top:14px">Every dataset is a published benchmark from the UCI Machine Learning Repository or Kaggle, so these results can be compared directly against the literature.</p>
+    <div class="tablewrap rise" style="margin-top:44px">
+      <table>
+        <thead><tr><th>Dataset</th><th>Source</th><th>Samples</th><th>Features</th><th>Positive %</th><th>Year</th></tr></thead>
+        <tbody>
+          <tr><td>PIMA Indians Diabetes</td><td>UCI / NIDDK</td><td>768</td><td>8</td><td>34.9%</td><td>1988</td></tr>
+          <tr><td>Cleveland Heart Disease</td><td>UCI / Cleveland Clinic</td><td>303</td><td>13</td><td>54.5%</td><td>1989</td></tr>
+          <tr><td>Oxford Parkinson's</td><td>UCI / Oxford</td><td>197</td><td>22</td><td>75.1%</td><td>2007</td></tr>
+          <tr><td>ILPD Liver Disease</td><td>UCI</td><td>416</td><td>11</td><td>71.4%</td><td>2011</td></tr>
+          <tr><td>Hepatitis C (HCV)</td><td>Kaggle</td><td>615</td><td>13</td><td>7.6%</td><td>2020</td></tr>
+          <tr><td>Lung Cancer Survey</td><td>Kaggle</td><td>284</td><td>16</td><td>87.0%</td><td>2019</td></tr>
+          <tr><td>CKD Dataset</td><td>UCI</td><td>400</td><td>24</td><td>62.5%</td><td>2015</td></tr>
+          <tr><td>WDBC Breast Cancer</td><td>UCI / UW Madison</td><td>569</td><td>30</td><td>37.3%</td><td>1993</td></tr>
+          <tr><td>Jaundice Dataset</td><td>Kaggle</td><td>583</td><td>11</td><td>38.4%</td><td>2021</td></tr>
+          <tr><td>Symptom Training</td><td>Kaggle</td><td>4920</td><td>133</td><td>42 classes</td><td>2020</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="g2" style="margin-top:70px">
+      <div class="rise">
+        <h3 style="margin-bottom:16px">Training approach</h3>
+        <p style="font-size:15px">Each module was tuned with 5-fold Grid Search cross-validation. SMOTE was applied to the training split only — never before the split — so no synthetic sample can leak into evaluation. Models generalise closely, with under 8% between training and test accuracy across all seven algorithms compared.</p>
+      </div>
+      <div class="rise"><div class="px px-frame"><img src="/img/glassware.jpg" alt="" loading="lazy"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ accuracy ============ -->
+<section id="accuracy">
+  <div class="wrap">
+    <p class="eyebrow rise">Validation</p>
+    <h2 class="rise" style="max-width:20ch">The full numbers, including the weak ones.</h2>
+    <p class="rise" style="max-width:64ch;margin-top:14px">
+      Accuracy ranges from <b style="color:var(--fg);font-weight:400">78.5%</b> to
+      <b style="color:var(--fg);font-weight:400">96.5%</b> across modules. The spread is real and
+      reflects genuine differences in dataset size and task difficulty — the diabetes module is the hardest of the nine.
+    </p>
+    <div class="tablewrap rise" style="margin-top:44px">
+      <table>
+        <thead><tr><th>Module</th><th>Algorithm</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>AUC-ROC</th></tr></thead>
+        <tbody id="metrics"></tbody>
+      </table>
+    </div>
+    <div class="g2" style="margin-top:70px">
+      <div class="rise">
+        <h3 style="margin-bottom:16px">Usability testing</h3>
+        <p style="font-size:15px;margin-bottom:22px">25 participants completed five scripted tasks, then the standard 10-item System Usability Scale. An overall score of 81.4 places the system in the "Excellent" band.</p>
+        <div class="tablewrap">
+          <table style="min-width:0">
+            <thead><tr><th>Group</th><th>N</th><th>SUS</th><th>Rating</th></tr></thead>
+            <tbody>
+              <tr><td>Engineering students</td><td>10</td><td>84.2</td><td>Excellent</td></tr>
+              <tr><td>Nursing students</td><td>8</td><td>79.4</td><td>Good</td></tr>
+              <tr><td>General users</td><td>7</td><td>76.8</td><td>Good</td></tr>
+              <tr class="total"><td>Overall</td><td>25</td><td>81.4</td><td>Excellent</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="rise"><div class="px px-frame"><img src="/img/bowl.jpg" alt="" loading="lazy"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ limitations ============ -->
+<section id="limits" style="background:var(--bg-2)">
+  <div class="wrap">
+    <p class="eyebrow rise">Limitations</p>
+    <h2 class="rise" style="max-width:22ch">What this system does not do.</h2>
+    <p class="rise" style="max-width:62ch;margin-top:14px">Stated plainly, because a screening tool that hides its boundaries is worse than one that names them.</p>
+    <div class="lims rise" style="margin-top:48px">
+      <div class="lim"><h3>Small training sets</h3><p>All nine numerical modules train on 197–768 samples. These are the standard research benchmarks, but they do not represent the full diversity of clinical presentation.</p></div>
+      <div class="lim"><h3>Narrow demographics</h3><p>The PIMA diabetes dataset is drawn entirely from Pima Indian women, which limits how far that module's performance generalises to other groups.</p></div>
+      <div class="lim"><h3>Rule-based explanations</h3><p>Explanations come from clinical thresholds rather than model-native attribution such as SHAP or LIME. They are more readable, but they do not always mirror the model's internal logic.</p></div>
+      <div class="lim"><h3>No clinical validation</h3><p>Nothing here has been prospectively validated in a clinical setting, and the system depends on values being entered honestly and correctly.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ about ============ -->
+<section id="about">
+  <div class="wrap g2">
+    <div class="rise">
+      <p class="eyebrow">About</p>
+      <h2 style="max-width:17ch">Open source, and accountable to its own numbers.</h2>
+      <p style="font-size:15px;margin-top:18px;max-width:52ch">
+        VITALS integrates nine disease modules and one 42-class symptom model behind a
+        single interface — the broadest such integration among the open academic
+        prototypes reviewed for this work. Every claim on this page is traceable to the
+        published evaluation.
+      </p>
+      <div class="hero-cta" style="margin-top:34px">
+        <a class="btn btn-solid" href="/report.html">Try the Live Demo →</a>
+        <a class="linkish" href="https://github.com/ankitsingathia/MDPS" target="_blank" rel="noopener">Read the source</a>
+      </div>
+    </div>
+    <div class="rise"><div class="px px-frame"><img src="/img/doorway.jpg" alt="" loading="lazy"></div></div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footrow">
+      <div>
+        <div class="brand" style="margin-bottom:14px">VITALS</div>
+        <p style="font-size:14px;max-width:38ch">Multiple Disease Prediction System — explainable screening across nine conditions.</p>
+      </div>
+      <div><h4>Product</h4><ul>
+        <li><a href="#how">How It Works</a></li><li><a href="#modules">Screenings</a></li>
+        <li><a href="/report.html">Report analysis</a>
+      <a href="/care.html">Find care</a>
+      <a href="#accuracy">Accuracy</a></li><li><a href="#limits">Limitations</a></li></ul></div>
+      <div><h4>Project</h4><ul>
+        <li><a href="#about">About</a></li>
+        <li><a href="https://github.com/ankitsingathia/MDPS" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="#hood">Datasets</a></li></ul></div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 VITALS. Educational and research use only.</span>
+      <span>Not a medical device. Not a diagnosis.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* Figures are from Table 5.1 of the project report. Cards, menu and the
+   metrics table all render from this one array so they cannot disagree. */
+const DATA = [
+  {name:'Diabetes',      algo:'SVM (RBF)',     acc:78.5,p:0.79,r:0.76,f1:0.77,auc:0.84,n:768,img:'m-diabetes'},
+  {name:'Heart Disease', algo:'Random Forest', acc:86.3,p:0.88,r:0.85,f1:0.86,auc:0.91,n:303,img:'m-heart'},
+  {name:"Parkinson's",   algo:'SVM (Linear)',  acc:94.1,p:0.95,r:0.93,f1:0.94,auc:0.97,n:197,img:'m-parkinsons'},
+  {name:'Liver Disease', algo:'Decision Tree', acc:81.2,p:0.82,r:0.79,f1:0.80,auc:0.86,n:416,img:'m-liver'},
+  {name:'Hepatitis C',   algo:'Logistic Reg.', acc:83.9,p:0.84,r:0.82,f1:0.83,auc:0.89,n:615,img:'m-hepatitis'},
+  {name:'Lung Cancer',   algo:'XGBoost',       acc:88.7,p:0.89,r:0.87,f1:0.88,auc:0.93,n:284,img:'m-lung'},
+  {name:'Kidney Disease',algo:'Random Forest', acc:92.4,p:0.93,r:0.91,f1:0.92,auc:0.96,n:400,img:'m-kidney'},
+  {name:'Breast Cancer', algo:'Logistic Reg.', acc:96.5,p:0.97,r:0.96,f1:0.96,auc:0.98,n:569,img:'m-breast'},
+  {name:'Jaundice',      algo:'Naïve Bayes',   acc:79.8,p:0.81,r:0.78,f1:0.79,auc:0.83,n:583,img:'m-jaundice'},
+];
+const SYMPTOM = {name:'Symptom-Based',algo:'Decision Tree',acc:91.2,p:0.90,r:0.91,f1:0.90,auc:null};
+
+document.getElementById('modgrid').innerHTML = DATA.map(d => `
+  <a class="mod rise" href="/app.html" style="--rest:${(100-d.acc).toFixed(1)}%">
+    <figure class="px"><img src="/img/${d.img}.jpg" alt="${d.name}" loading="lazy"></figure>
+    <div class="body"><h3>${d.name}</h3><div class="algo">${d.algo}</div>
+      <div class="bar"><i></i></div>
+      <div class="meta"><span>${d.acc}% accuracy</span><span>${d.n} samples</span></div></div>
+  </a>`).join('');
+
+document.getElementById('menugrid').innerHTML = DATA.map(d => `
+  <a class="menu-card" href="/app.html">
+    <figure><img src="/img/${d.img}.jpg" alt="" loading="lazy"></figure>
+    <span>${d.name}<i>${d.algo}</i></span>
+  </a>`).join('');
+
+document.getElementById('metrics').innerHTML = DATA.concat(SYMPTOM).map(d => `
+  <tr><td>${d.name}</td><td>${d.algo}</td><td>${d.acc}%</td>
+  <td>${d.p.toFixed(2)}</td><td>${d.r.toFixed(2)}</td><td>${d.f1.toFixed(2)}</td>
+  <td>${d.auc ? d.auc.toFixed(2) : '—'}</td></tr>`).join('');
+
+/* hero marquee — condition names, doubled so the loop is seamless */
+const MQ = ['Diabetes','Heart','Parkinson’s','Liver','Hepatitis','Lung','Kidney','Breast','Jaundice'];
+document.getElementById('heromq').innerHTML =
+  MQ.concat(MQ).map(n => `<span>${n} &bull;</span>`).join('');
+
+/* specimen band — the papercraft set, doubled */
+const PC = ['pc-pancreas','pc-heart','pc-brain','pc-liver','pc-virus','pc-lungs','pc-kidneys','pc-breast','pc-tubes'];
+document.getElementById('band').innerHTML =
+  PC.concat(PC).map(n => `<div class="px"><img src="/img/${n}.jpg" alt="" loading="lazy"></div>`).join('');
+
+/* scroll reveal */
+const io = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+}, { threshold: 0.1, rootMargin: '0px 0px -6% 0px' });
+document.querySelectorAll('.rise,.mod').forEach(el => io.observe(el));
+
+/* ---------- image depth ----------
+   Images only, so they drift against a foreground that scrolls normally.
+
+   The image is already scaled 1.16 by CSS, so a frame of height H has
+   0.16H of hidden overage — 0.08H available in each direction. Shifting by
+   6% of H stays inside that with room to spare, whatever the frame size.
+
+   All rects are read in one pass and all transforms written in the next,
+   inside a single rAF, so the browser never interleaves layout and paint. */
+const PX = [...document.querySelectorAll('.px')]
+  .map(frame => ({ frame, img: frame.querySelector('img,video') }))
+  .filter(o => o.img);
+
+let pxTicking = false;
+function depth() {
+  pxTicking = false;
+  const vh = innerHeight;
+  const writes = [];
+  for (const o of PX) {
+    const r = o.frame.getBoundingClientRect();
+    if (r.bottom < -150 || r.top > vh + 150) continue;      // off-screen
+    const centred = (r.top + r.height / 2 - vh / 2) / ((vh + r.height) / 2);
+    const p = Math.max(-1, Math.min(1, centred));
+    writes.push([o.img, p * r.height * 0.06]);
+  }
+  for (const [img, shift] of writes) {
+    img.style.transform = `translate3d(0,${shift.toFixed(1)}px,0) scale(1.16)`;
+  }
+}
+function onScrollDepth() {
+  if (!pxTicking) { pxTicking = true; requestAnimationFrame(depth); }
+}
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  addEventListener('scroll', onScrollDepth, { passive: true });
+  addEventListener('resize', onScrollDepth, { passive: true });
+  depth();
+}
+
+/* sticky header + active section */
+const hdr = document.getElementById('hdr');
+const links = [...document.querySelectorAll('.navlinks a[href^="#"]')];
+const sections = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+addEventListener('scroll', () => {
+  hdr.classList.toggle('stuck', scrollY > 40);
+  const y = scrollY + innerHeight * 0.32;
+  let cur = null;
+  sections.forEach(s => { if (s.offsetTop <= y) cur = s; });
+  links.forEach(a => a.classList.toggle('active', cur && a.getAttribute('href') === '#' + cur.id));
+}, { passive: true });
+
+/* fullscreen menu */
+const burger = document.getElementById('burger'), menu = document.getElementById('menu');
+function setMenu(open) {
+  burger.classList.toggle('open', open);
+  menu.classList.toggle('open', open);
+  menu.setAttribute('aria-hidden', String(!open));
+  burger.setAttribute('aria-expanded', String(open));
+  document.body.classList.toggle('locked', open);
+}
+burger.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
+menu.addEventListener('click', e => { if (e.target.closest('a')) setMenu(false); });
+addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
+
+/* cursor dot */
+const dot = document.getElementById('dot');
+if (matchMedia('(pointer:fine)').matches) {
+  addEventListener('mousemove', e => {
+    dot.style.transform = `translate(${e.clientX}px,${e.clientY}px) translate(-50%,-50%)`;
+  }, { passive: true });
+  document.querySelectorAll('a,button').forEach(el => {
+    el.addEventListener('mouseenter', () => dot.classList.add('big'));
+    el.addEventListener('mouseleave', () => dot.classList.remove('big'));
+  });
+} else { dot.style.display = 'none'; }
+
+/* preloader */
+(function () {
+  const pre = document.getElementById('pre'), trace = document.getElementById('trace'),
+        eye = document.getElementById('eye'), ltrs = [...pre.querySelectorAll('.ltr')];
+  const len = trace.getTotalLength();
+  trace.style.strokeDasharray = len;
+  trace.style.strokeDashoffset = len;
+  const at = (ms, fn) => setTimeout(fn, ms);
+  ltrs.forEach((l, i) => at(200 + i * 100, () => l.classList.add('in')));
+  at(880, () => {
+    trace.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(.22,1,.36,1)';
+    trace.style.strokeDashoffset = 0;
+  });
+  at(2120, () => eye.classList.add('in'));
+  at(2300, () => trace.classList.add('fade'));
+  at(3200, () => pre.classList.add('lift'));
+  at(4350, () => pre.classList.add('gone'));
+})();
+</script>
+<script>window.VITALS_API = (location.port === "8000" || location.port === "" ? "/api" : "http://127.0.0.1:8000/api");</script>
+<script src="/vera.js" defer></script>
+</body>
+</html>
