@@ -21,6 +21,19 @@ ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "code"))
 
+# Load environment variables from .env if present
+for env_path in [ROOT / ".env", ROOT / "../.env"]:
+    try:
+        if env_path.exists():
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ[k.strip()] = v.strip()
+    except Exception:
+        pass
+
 from auth import init_db, signup, login, save_report, get_user_reports, delete_report, delete_all_reports  # noqa
 from code.helper import generate_pdf, explain_prediction, HEALTH_TIPS   # noqa
 from code.predictors import SCHEMAS, get_predictor, run_screening_prediction       # noqa
