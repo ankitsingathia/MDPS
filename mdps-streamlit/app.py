@@ -38,10 +38,11 @@ from auth import init_db, signup, login, save_report, get_user_reports, delete_r
 from code.helper import generate_pdf, explain_prediction, HEALTH_TIPS   # noqa
 from code.predictors import SCHEMAS, get_predictor, run_screening_prediction       # noqa
 from code.DiseaseModel import DiseaseModel                               # noqa
+from ui_theme import MODERN_EDGE_CSS                                      # noqa
 
 st.set_page_config(
     page_title="MDPS — Multiple Disease Prediction System",
-    page_icon="🩺", layout="wide", initial_sidebar_state="expanded",
+    layout="wide", initial_sidebar_state="expanded",
 )
 
 CUSTOM_CSS = """
@@ -411,7 +412,7 @@ if "dark_mode"      not in st.session_state: st.session_state.dark_mode      = F
 if "confirm_delete" not in st.session_state: st.session_state.confirm_delete = False
 if "guest_reports"  not in st.session_state: st.session_state.guest_reports  = []
 
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+st.markdown(CUSTOM_CSS + MODERN_EDGE_CSS, unsafe_allow_html=True)
 
 if st.session_state.dark_mode:
     st.markdown("""
@@ -1063,7 +1064,7 @@ def render_auth_form(key_prefix="auth", title=None, show_skip=False, on_skip=Non
                     st.error(msg)
     if show_skip:
         st.markdown("<div style='text-align:center;margin-top:10px;'>", unsafe_allow_html=True)
-        if st.button("⚡ Skip & Continue as Guest", key=f"{key_prefix}_skip_btn", use_container_width=True):
+        if st.button("Continue as Guest", key=f"{key_prefix}_skip_btn", use_container_width=True):
             if on_skip:
                 on_skip()
             st.rerun()
@@ -1081,7 +1082,7 @@ def render_save_prompt(disease, symptoms, prediction, confidence=None, severity=
             severity=severity,
             details=details,
         )
-        st.success(f"✅ Analysis securely saved to your personal history (Report ID: #{rid})")
+        st.success(f"Analysis securely saved to your personal history (Report ID: #{rid})")
         return rid
     else:
         guest_entry = {
@@ -1096,9 +1097,9 @@ def render_save_prompt(disease, symptoms, prediction, confidence=None, severity=
         }
         st.session_state.guest_reports.append(guest_entry)
         
-        with st.expander("💾 Want to save this report to your permanent history?", expanded=False):
-            st.info("💡 You are currently in Guest Mode. Log in or create a free account to keep this report in your health history, or skip to continue as guest.")
-            tabs = st.tabs(["Login to Save", "Create Account & Save", "⚡ Skip"])
+        with st.expander("Want to save this report to your permanent history?", expanded=False):
+            st.info("You are currently in Guest Mode. Log in or create a free account to keep this report in your health history, or skip to continue as guest.")
+            tabs = st.tabs(["Login to Save", "Create Account & Save", "Skip"])
             with tabs[0]:
                 with st.form(f"{key_prefix}_guest_login"):
                     email = st.text_input("Email", placeholder="you@example.com", key=f"{key_prefix}_ge")
@@ -1135,6 +1136,25 @@ def render_save_prompt(disease, symptoms, prediction, confidence=None, severity=
         return guest_entry["id"]
 
 
+# ── Metric row ────────────────────────────────────────────────────────────────
+def render_metric_row(items):
+    """Render a stat row as one CSS grid.
+
+    st.columns gives each card its own independent block, so a value that wraps
+    to two lines makes that one card taller than its neighbours. A single grid
+    with `grid-auto-rows: 1fr` keeps every card the same height and every value
+    on the same baseline, regardless of how the text wraps.
+    """
+    cards = "".join(
+        f'<div class="metric-card">'
+        f'<span class="metric-label">{label}</span>'
+        f'<span class="metric-value">{value}</span>'
+        f'</div>'
+        for label, value in items
+    )
+    st.markdown(f'<div class="metric-grid">{cards}</div>', unsafe_allow_html=True)
+
+
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 def sidebar() -> str:
     u = st.session_state.user
@@ -1143,15 +1163,15 @@ def sidebar() -> str:
         st.markdown('<div class="sidebar-tagline">Patient Health Intelligence</div>', unsafe_allow_html=True)
         st.divider()
         if u:
-            st.markdown(f"👤 **{u['username']}**")
+            st.markdown(f"**{u['username']}**")
             st.caption(u["email"])
             if st.button("Logout", use_container_width=True):
                 st.session_state.user = None
                 st.rerun()
         else:
-            st.markdown("👤 **Guest Mode**")
+            st.markdown("**Guest Mode**")
             st.caption("Direct access enabled")
-            with st.expander("🔑 Log in / Sign up"):
+            with st.expander("Log in / Sign up"):
                 render_auth_form("sidebar_auth")
         st.divider()
         choice = st.radio("Navigation", [
@@ -1179,16 +1199,12 @@ def page_dashboard():
         st.markdown(f'<p class="main-title">Welcome back, {u["username"]}</p>', unsafe_allow_html=True)
         st.markdown('<p class="subtitle">Your health screening summary and recent progress</p>', unsafe_allow_html=True)
         st.markdown("")
-        c1, c2, c3, c4 = st.columns(4)
-        for col, label, val in [
-            (c1, "Total Predictions", len(reports)),
-            (c2, "Diseases Tracked",  len({r["disease"] for r in reports})),
-            (c3, "Positive Results",  sum(1 for r in reports if "Positive" in str(r.get("prediction","")) or "High" in str(r.get("prediction","")))),
-            (c4, "Last Check",        reports[0]["date"][:10] if reports else "—"),
-        ]:
-            with col:
-                st.markdown(f'<div class="metric-card"><div style="opacity:.8;font-size:.85rem">{label}</div>'
-                            f'<h2 style="margin:4px 0 0">{val}</h2></div>', unsafe_allow_html=True)
+        render_metric_row([
+            ("Total Predictions", len(reports)),
+            ("Diseases Tracked",  len({r["disease"] for r in reports})),
+            ("Positive Results",  sum(1 for r in reports if "Positive" in str(r.get("prediction","")) or "High" in str(r.get("prediction","")))),
+            ("Last Check",        reports[0]["date"][:10] if reports else "—"),
+        ])
         render_progress_tracker(reports, "Your Progress")
         st.markdown("### Quick actions")
         qc = st.columns(3)
@@ -1205,58 +1221,42 @@ def page_dashboard():
         
         st.markdown("""
         <div class="hero-banner">
-            <div class="hero-badge">⚡ Instant Direct Access</div>
+            <div class="hero-badge">Instant Direct Access</div>
             <h1>AI Medical Screening &amp;<br>Lab Report Analysis</h1>
             <p>Upload lab reports, check symptoms across conditions, and get instant clinical-grade insights without barriers.</p>
         </div>
         """, unsafe_allow_html=True)
         
-        c1, c2, c3, c4 = st.columns(4)
-        for col, label, val in [
-            (c1, "Screening Modules", "10+"),
-            (c2, "Report Formats", "PDF / Image"),
-            (c3, "Mode", "Guest Browsing"),
-            (c4, "Instant Analysis", "Active"),
-        ]:
-            with col:
-                st.markdown(f'<div class="metric-card"><div style="opacity:.8;font-size:.85rem">{label}</div>'
-                            f'<h2 style="margin:4px 0 0">{val}</h2></div>', unsafe_allow_html=True)
-        
-        st.markdown("### 🚀 Available Features")
-        f1, f2, f3 = st.columns(3)
-        with f1:
-            st.markdown("""
+        render_metric_row([
+            ("Screening Modules", "10+"),
+            ("Report Formats",    "PDF / Image"),
+            ("Mode",              "Guest Browsing"),
+            ("Instant Analysis",  "Active"),
+        ])
+
+        st.markdown("### Available Features")
+        st.markdown("""
+        <div class="feature-grid">
             <div class="feature-tile">
-                <div class="feature-icon">📑</div>
+                <div class="feature-icon">01</div>
                 <div class="feature-title">Medical Report Analyzer</div>
                 <div class="feature-desc">Upload blood test or lab report PDFs to automatically extract markers and estimate multi-disease risk.</div>
             </div>
-            """, unsafe_allow_html=True)
-        with f2:
-            st.markdown("""
             <div class="feature-tile">
-                <div class="feature-icon">🩺</div>
+                <div class="feature-icon">02</div>
                 <div class="feature-title">Symptom Checker</div>
                 <div class="feature-desc">Select symptoms from 130+ clinical signals to receive an instant machine-learned condition prediction.</div>
             </div>
-            """, unsafe_allow_html=True)
-        with f3:
-            st.markdown("""
             <div class="feature-tile">
-                <div class="feature-icon">🤖</div>
+                <div class="feature-icon">03</div>
                 <div class="feature-title">AI Health Assistant</div>
                 <div class="feature-desc">Ask medical questions, explore health tips, and find nearby emergency care or hospitals.</div>
             </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("""
-        <div class="clean-callout">
-            <strong>💡 Guest Mode Active:</strong> You can use any screening feature and download PDF reports directly. If you would like to save your reports to track health progress over time, you can log in or create an account anytime.
         </div>
         """, unsafe_allow_html=True)
-        
-        with st.expander("🔑 Log in or Create an Account (Optional)"):
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander("Log in or Create an Account (Optional)"):
             render_auth_form("dash_auth")
 
 
@@ -1264,7 +1264,7 @@ def page_dashboard():
 def page_about():
     st.markdown("""
     <div class="hero-banner">
-        <div class="hero-badge">🩺 AI-Powered</div>
+        <div class="hero-badge">AI-Powered</div>
         <h1>About MDPS</h1>
         <p>Multiple Disease Prediction System — AI-assisted health screening for everyone.</p>
     </div>
@@ -1280,15 +1280,15 @@ def page_about():
     """, unsafe_allow_html=True)
     st.markdown("### Diseases & Modules Covered")
     diseases = [
-        ("🩸","Diabetes","Glucose, BMI, insulin-based prediction"),
-        ("❤️","Heart Disease","Cholesterol, BP, ECG-based screening"),
-        ("🧠","Parkinson's","Voice signal analysis (22 features)"),
-        ("🫀","Liver Disease","Bilirubin, enzyme level analysis"),
-        ("🦠","Hepatitis C","Blood marker-based risk assessment"),
-        ("🫁","Lung Cancer","Smoking, symptom-based screening"),
-        ("🩺","Chronic Kidney Disease","Creatinine, hemoglobin analysis"),
-        ("🎀","Breast Cancer","30-feature tumour cell analysis"),
-        ("🟡","Jaundice","Symptom + severity-based prediction"),
+        ("01","Diabetes","Glucose, BMI, insulin-based prediction"),
+        ("02","Heart Disease","Cholesterol, BP, ECG-based screening"),
+        ("03","Parkinson's","Voice signal analysis (22 features)"),
+        ("04","Liver Disease","Bilirubin, enzyme level analysis"),
+        ("05","Hepatitis C","Blood marker-based risk assessment"),
+        ("06","Lung Cancer","Smoking, symptom-based screening"),
+        ("07","Chronic Kidney Disease","Creatinine, hemoglobin analysis"),
+        ("08","Breast Cancer","30-feature tumour cell analysis"),
+        ("09","Jaundice","Symptom + severity-based prediction"),
     ]
     cols = st.columns(3)
     for i, (icon, name, desc) in enumerate(diseases):
@@ -1297,13 +1297,13 @@ def page_about():
                         f'<div class="feature-icon">{icon}</div>'
                         f'<div class="feature-title">{name}</div>'
                         f'<div class="feature-desc">{desc}</div></div>', unsafe_allow_html=True)
-    st.markdown("### ⚠️ Clinical Disclaimer")
+    st.markdown("### Clinical Disclaimer")
     st.warning("MDPS is for **informational and educational purposes only**. "
                "It does not diagnose disease or replace a qualified healthcare professional.")
     st.markdown("### Tech Stack")
     c1,c2,c3,c4 = st.columns(4)
-    c1.success("🐍 Python 3.12"); c2.success("🚀 Streamlit")
-    c3.success("🤖 scikit-learn & Groq"); c4.success("📊 Plotly")
+    c1.success("Python 3.12"); c2.success("Streamlit")
+    c3.success("scikit-learn & Groq"); c4.success("Plotly")
 
 
 # ── Prediction result ─────────────────────────────────────────────────────────
@@ -1648,7 +1648,7 @@ def page_symptom():
     if st.button("Predict disease", use_container_width=True, disabled=not selected):
         with st.spinner("Analyzing symptoms... please wait"):
             res = dm.predict(selected)
-        st.markdown(f'<div class="result-positive">🩺 Likely condition: <strong>{res["disease"]}</strong></div>',
+        st.markdown(f'<div class="result-positive">Likely condition: <strong>{res["disease"]}</strong></div>',
                     unsafe_allow_html=True)
         st.markdown("")
         g_col, m_col = st.columns([1, 1])
@@ -1661,12 +1661,12 @@ def page_symptom():
                 st.metric("Confidence", f"{res['confidence']*100:.1f}%")
             st.metric("Severity score", f"{res['severity']:.2f}")
         if res["description"]:
-            with st.expander("📖 About this condition", expanded=True):
+            with st.expander("About this condition", expanded=True):
                 st.write(res["description"])
         if res["precautions"]:
-            with st.expander("🛡️ Recommended precautions", expanded=True):
+            with st.expander("Recommended precautions", expanded=True):
                 for p in res["precautions"]: st.write("• " + p)
-        with st.expander("🔍 Why this prediction"):
+        with st.expander("Why this prediction"):
             ranked = sorted(selected, key=lambda s: dm.severity.get(s, 0), reverse=True)[:5]
             for s in ranked:
                 st.write(f"• **{s}** — severity {dm.severity.get(s,'—')}")
@@ -1692,7 +1692,7 @@ def page_symptom():
                 confidence=res["confidence"],
                 explanation=[f"{s} (severity {dm.severity.get(s,'—')})" for s in ranked],
             )
-        st.download_button("⬇️ Download PDF Report", pdf,
+        st.download_button("Download PDF Report", pdf,
                            file_name=f"symptom_report_{rid}.pdf",
                            mime="application/pdf", use_container_width=True)
 
@@ -1703,7 +1703,7 @@ def page_reports():
     u = st.session_state.user
     if not u:
         if st.session_state.guest_reports:
-            st.info("💡 Showing reports generated during this guest session. To keep these reports permanently and track trends across sessions, please log in or create an account.")
+            st.info("Showing reports generated during this guest session. To keep these reports permanently and track trends across sessions, please log in or create an account.")
             reports = st.session_state.guest_reports
             render_progress_tracker(reports, "Session Progress")
             df = report_dataframe(reports).sort_values("date", ascending=False)
@@ -1715,13 +1715,13 @@ def page_reports():
                 c3.write(r.get("prediction", ""))
                 c4.write(f"{r['confidence']*100:.0f}%" if pd.notna(r.get("confidence")) else "-")
             st.divider()
-            st.markdown("#### 🔐 Log in to permanently save your records")
+            st.markdown("#### Log in to permanently save your records")
             render_auth_form("guest_reports_auth", show_skip=True)
             return
         else:
             st.markdown("""
             <div class="clean-callout">
-                <h3>🔐 Personal Health History is locked</h3>
+                <h3>Personal Health History is locked</h3>
                 <p>Log in or create a free account to securely store your medical reports, track disease risk trends, and view personalized analytics over time.</p>
             </div>
             """, unsafe_allow_html=True)
@@ -1785,11 +1785,11 @@ def page_analytics():
     if not u:
         if st.session_state.guest_reports:
             reports = st.session_state.guest_reports
-            st.info("💡 Displaying analytics for reports generated during this session.")
+            st.info("Displaying analytics for reports generated during this session.")
         else:
             st.markdown("""
             <div class="clean-callout">
-                <h3>📊 Longitudinal Health Analytics</h3>
+                <h3>Longitudinal Health Analytics</h3>
                 <p>Analytics visualizes disease risk trends, severity changes, and confidence distributions over time. Log in or create an account to track your personal health trends.</p>
             </div>
             """, unsafe_allow_html=True)
@@ -1899,68 +1899,68 @@ def get_local_medical_response(question: str) -> str:
 
     if any(k in q for k in ["diabet", "sugar", "glucose", "insulin", "hba1c"]):
         return (
-            "🩺 **Clinical Overview: Glycemic Regulation & Diabetes**\n\n"
+            "**Clinical Overview: Glycemic Regulation & Diabetes**\n\n"
             "• **Key Biomarkers:** Fasting Blood Glucose (Normal: 70–99 mg/dL), HbA1c (Normal: < 5.7%; Prediabetes: 5.7–6.4%; Diabetes: ≥ 6.5%).\n"
             "• **Common Indicators:** Frequent urination (polyuria), unquenchable thirst (polydipsia), unexplained fatigue, and blurred vision.\n\n"
-            "🥗 **Dietary & Lifestyle Protocol:**\n"
+            "**Dietary & Lifestyle Protocol:**\n"
             "• Choose complex carbohydrates with low glycemic index (legumes, whole oats, non-starchy leafy vegetables).\n"
             "• Maintain 150+ minutes of moderate aerobic exercise weekly combined with progressive resistance training.\n\n"
-            "⚠️ **Emergency Red Flags:** Blood sugar > 300 mg/dL with confusion, persistent vomiting, or rapid deep breathing warrants immediate emergency care."
+            "**Emergency Red Flags:** Blood sugar > 300 mg/dL with confusion, persistent vomiting, or rapid deep breathing warrants immediate emergency care."
         )
     if any(k in q for k in ["heart", "cardio", "chest pain", "cholesterol", "bp", "blood pressure", "hypertension", "angina", "palpitat"]):
         return (
-            "🩺 **Clinical Overview: Cardiovascular Health & Blood Pressure**\n\n"
+            "**Clinical Overview: Cardiovascular Health & Blood Pressure**\n\n"
             "• **Diagnostic Reference:** Optimal Blood Pressure is < 120/80 mmHg. Total Cholesterol should ideally remain < 200 mg/dL (LDL < 100 mg/dL, HDL > 50 mg/dL).\n"
             "• **Key Symptoms:** Exertional chest tightness, shortness of breath, palpitations, or lightheadedness.\n\n"
-            "🥗 **Preventive Protocol (DASH Approach):**\n"
+            "**Preventive Protocol (DASH Approach):**\n"
             "• Sodium restriction (< 2,000 mg/day) and increased potassium (spinach, avocados, bananas).\n"
             "• Rich intake of Omega-3 fatty acids (walnuts, chia seeds, salmon) and daily brisk walking.\n\n"
-            "⚠️ **Emergency Red Flags:** Pressure or squeezing sensation in the chest radiating to left arm, neck, or jaw requires immediate emergency medical evaluation (call emergency services)."
+            "**Emergency Red Flags:** Pressure or squeezing sensation in the chest radiating to left arm, neck, or jaw requires immediate emergency medical evaluation (call emergency services)."
         )
     if any(k in q for k in ["kidney", "renal", "creatinine", "urea", "egfr", "proteinuria"]):
         return (
-            "🩺 **Clinical Overview: Renal Function & Kidney Care**\n\n"
+            "**Clinical Overview: Renal Function & Kidney Care**\n\n"
             "• **Key Biomarkers:** Serum Creatinine (0.6–1.3 mg/dL), Blood Urea Nitrogen (10–45 mg/dL), and eGFR (> 90 mL/min/1.73m²).\n"
             "• **Clinical Indicators:** Foamy urine (proteinuria), bilateral ankle edema, morning facial puffiness, and fatigue.\n\n"
-            "🥗 **Renal Protection Steps:**\n"
+            "**Renal Protection Steps:**\n"
             "• Maintain steady daily hydration (2–2.5 L) unless medically fluid-restricted.\n"
             "• Avoid unmonitored chronic NSAID painkiller use (e.g. ibuprofen).\n"
             "• Keep blood pressure and blood sugar strictly controlled to protect glomeruli."
         )
     if any(k in q for k in ["liver", "hepat", "jaundice", "bilirubin", "alt", "ast", "sgpt", "sgot", "fatty liver"]):
         return (
-            "🩺 **Clinical Overview: Hepatic Function & Liver Screening**\n\n"
+            "**Clinical Overview: Hepatic Function & Liver Screening**\n\n"
             "• **Key Biomarkers:** Total Bilirubin (0.1–1.2 mg/dL), ALT/SGPT (< 45 U/L), AST/SGOT (< 40 U/L), Alkaline Phosphatase (44–147 U/L).\n"
             "• **Warning Signs:** Scleral/skin icterus (yellowing), dark tea-colored urine, right upper quadrant tenderness, and unexplained malaise.\n\n"
-            "🥗 **Hepatoprotective Steps:**\n"
+            "**Hepatoprotective Steps:**\n"
             "• Abstain from alcohol and unnecessary hepatotoxic medications.\n"
             "• Adopt an antioxidant-rich Mediterranean dietary pattern to reverse hepatic steatosis (fatty liver)."
         )
     if any(k in q for k in ["cancer", "tumor", "tumour", "oncolog", "biopsy", "malignan", "lump", "mammogra"]):
         return (
-            "🩺 **Clinical Overview: Oncology Screening & Early Detection**\n\n"
+            "**Clinical Overview: Oncology Screening & Early Detection**\n\n"
             "• **Core Principle:** Early detection through regular screening (mammograms, low-dose chest CT for smokers, colonoscopies) substantially increases curative outcomes.\n"
             "• **Universal Warning Signs (CAUTION Criteria):** Non-healing sores, abnormal painless lumps, changes in bowel/bladder habits, difficulty swallowing, or unexplained rapid weight loss.\n\n"
-            "💡 *Recommended Action:* Discuss age-appropriate cancer screening guidelines and any suspicious palpable findings with an oncologist."
+            "*Recommended Action:* Discuss age-appropriate cancer screening guidelines and any suspicious palpable findings with an oncologist."
         )
     if any(k in q for k in ["parkinson", "tremor", "neuro", "brain", "dopamine", "shaking", "rigidity"]):
         return (
-            "🩺 **Clinical Overview: Neurological Signs & Parkinson's Disease**\n\n"
+            "**Clinical Overview: Neurological Signs & Parkinson's Disease**\n\n"
             "• **Cardinal Signs:** Resting asymmetric tremor, bradykinesia (slowness in initiating movement), muscular cogwheel rigidity, and postural imbalance.\n"
             "• **Supportive Management:** Targeted neuro-physiotherapy, aerobic cycling/boxing, speech therapy, and personalized dopamine replacement protocols.\n\n"
-            "💡 *Recommended Action:* Schedule a formal neurological evaluation with a movement disorder specialist."
+            "*Recommended Action:* Schedule a formal neurological evaluation with a movement disorder specialist."
         )
 
     return (
-        f"🩺 **Clinical Educational Guidance**\n\n"
+        f"**Clinical Educational Guidance**\n\n"
         f"Regarding your query on **{escape(question)}**:\n\n"
         "**Clinical Principles & Evidence-Based Recommendations:**\n"
         "• **Baseline Lab Screening:** Regular tracking of routine parameters (CBC, fasting glucose, renal and hepatic profiles, lipid panel) helps detect early metabolic signals.\n"
         "• **Lifestyle Optimization:** Emphasize a nutrient-dense whole foods diet, 7–8 hours of restorative sleep, consistent hydration, and stress regulation.\n"
         "• **Monitoring Changes:** Keep a structured symptom log noting onset, duration, and aggravating/alleviating factors.\n\n"
-        "⚠️ **When to Seek Immediate Medical Attention:**\n"
+        "**When to Seek Immediate Medical Attention:**\n"
         "• High unremitting fever, severe sudden pain, breathing difficulty, or neurological deficits.\n\n"
-        "💡 *Note: MDPS Assistant provides educational guidance. Please consult a qualified doctor for clinical diagnosis and individualized treatment.*"
+        "*Note: MDPS Assistant provides educational guidance. Please consult a qualified doctor for clinical diagnosis and individualized treatment.*"
     )
 
 
@@ -1986,11 +1986,11 @@ def page_chatbot():
 
     st.markdown('<div class="assistant-shell">', unsafe_allow_html=True)
     if not st.session_state.chat_history:
-        st.markdown('<div class="status-note">💡 Start with a symptom, lab report question, disease prevention, or lifestyle query. The assistant provides educational guidance.</div>',
+        st.markdown('<div class="status-note">Start with a symptom, lab report question, disease prevention, or lifestyle query. The assistant provides educational guidance.</div>',
                     unsafe_allow_html=True)
     for msg in st.session_state.chat_history:
         css_class = "message-user" if msg["role"] == "user" else "message-assistant"
-        label = "👤 You" if msg["role"] == "user" else "🩺 Clinical Assistant"
+        label = "You" if msg["role"] == "user" else "Clinical Assistant"
         content = escape(str(msg["content"])).replace("\n", "<br>")
         st.markdown(f'<div class="{css_class}"><strong>{label}</strong><br>{content}</div>',
                     unsafe_allow_html=True)
@@ -2063,15 +2063,15 @@ def page_chatbot():
             st.session_state.chat_history = []
             st.rerun()
 
-    st.caption("🩺 This assistant provides evidence-based medical education. Always consult a licensed physician for diagnosis and medical treatment.")
+    st.caption("This assistant provides evidence-based medical education. Always consult a licensed physician for diagnosis and medical treatment.")
 
 
 # ── Health Tips ───────────────────────────────────────────────────────────────
 def page_tips():
-    st.markdown('<p class="main-title">💡 Health Tips</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">Health Tips</p>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Personalized tips for each condition</p>', unsafe_allow_html=True)
     for d, tips in HEALTH_TIPS.items():
-        with st.expander(f"🩺 {d}"):
+        with st.expander(f"{d}"):
             for t in tips: st.write("• " + t)
 
 
@@ -2080,7 +2080,7 @@ def page_profile():
     u = st.session_state.user
 
     if not u:
-        st.markdown('<p class="main-title">👤 Guest Profile</p>', unsafe_allow_html=True)
+        st.markdown('<p class="main-title">Guest Profile</p>', unsafe_allow_html=True)
         st.markdown("""
         <div class="profile-card">
             <div class="profile-avatar">?</div>
@@ -2094,7 +2094,7 @@ def page_profile():
         return
 
     reports = get_user_reports(u["id"])
-    st.markdown('<p class="main-title">👤 My Profile</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">My Profile</p>', unsafe_allow_html=True)
     initials = u["username"][0].upper() if u.get("username") else "U"
     total    = len(reports)
     positive = sum(1 for r in reports if "Positive" in str(r.get("prediction", "")) or "High" in str(r.get("prediction", "")))
@@ -2125,14 +2125,14 @@ def page_profile():
             elif new_pw != conf_pw:
                 st.error("Passwords do not match.")
             else:
-                st.success("✅ Password updated successfully!")
+                st.success("Password updated successfully!")
 
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 def page_settings():
-    st.markdown('<p class="main-title">⚙️ Settings</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">Settings</p>', unsafe_allow_html=True)
     st.markdown("### Appearance")
-    dark = st.toggle("🌙 Dark mode", value=st.session_state.get("dark_mode", False))
+    dark = st.toggle("Dark mode", value=st.session_state.get("dark_mode", False))
     if dark != st.session_state.get("dark_mode", False):
         st.session_state.dark_mode = dark
         st.rerun()
@@ -2143,7 +2143,7 @@ def page_settings():
     u = st.session_state.user
     if u:
         st.caption("Account: " + u["email"])
-        if st.button("🗑️ Delete all my reports", type="secondary"):
+        if st.button("Delete all my reports", type="secondary"):
             delete_all_reports(u["id"])
             st.success("All reports deleted!")
     else:
