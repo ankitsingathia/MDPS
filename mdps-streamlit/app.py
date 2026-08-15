@@ -1142,7 +1142,6 @@ def sidebar() -> str:
                 render_auth_form("sidebar_auth")
         st.divider()
         choice = st.radio("Navigation", [
-            "✨ VITALS Portal",
             "Dashboard",
             "Report Analyzer",
             "Symptom Checker",
@@ -2153,82 +2152,9 @@ def page_settings():
     st.info("MDPS v2.0 — Built with Streamlit & scikit-learn\n\nThis app is for educational purposes only.")
 
 
-# ── VITALS Patient Portal ─────────────────────────────────────────────────────
-def page_vitals():
-    st.markdown('<p class="main-title">✨ VITALS Patient Portal</p>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Next-generation clinical screening, lab report analysis, and care locator</p>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="hero-banner" style="margin-bottom: 2rem;">
-        <div class="hero-badge">🌟 High-End Patient Experience</div>
-        <h1>VITALS Health Interface</h1>
-        <p>A luxury, evidence-based medical screening portal featuring 9 specialized disease risk analyzers, multi-analyte lab report extraction, interactive care locator, and clinical AI guidance.</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    v1, v2, v3, v4 = st.columns(4)
-    with v1:
-        st.markdown("""
-        <div class="feature-tile">
-            <div class="feature-icon">🩺</div>
-            <div class="feature-title">9-Disease Screening</div>
-            <div class="feature-desc">Dynamic risk gauges, factor breakdowns, and clinical reasons for Diabetes, Heart, Liver, Kidney, and more.</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with v2:
-        st.markdown("""
-        <div class="feature-tile">
-            <div class="feature-icon">📑</div>
-            <div class="feature-title">Lab Report Analyzer</div>
-            <div class="feature-desc">Drag & drop blood reports to extract 20+ laboratory values and calculate multi-disease risk profiles.</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with v3:
-        st.markdown("""
-        <div class="feature-tile">
-            <div class="feature-icon">🏥</div>
-            <div class="feature-title">Care Finder Map</div>
-            <div class="feature-desc">OpenStreetMap facility locator for hospitals, clinics, specialists, and emergency care.</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with v4:
-        st.markdown("""
-        <div class="feature-tile">
-            <div class="feature-icon">💬</div>
-            <div class="feature-title">VERA AI Assistant</div>
-            <div class="feature-desc">Conversational clinical guidance explaining lab markers, reference bounds, and precautions.</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    tab_overview, tab_live = st.tabs(["🚀 Quick Access Links", "💻 Interactive Portal Preview"])
-    with tab_overview:
-        st.markdown("### 🌐 Running Local & Cloud Access")
-        st.markdown("""
-        - **Local Full Portal**: [http://localhost:8000/](http://localhost:8000/) *(Landing page with parallax typography & marquee)*
-        - **Clinical Screening Tool**: [http://localhost:8000/app.html](http://localhost:8000/app.html)
-        - **Lab Report Analyzer**: [http://localhost:8000/report.html](http://localhost:8000/report.html)
-        - **Find Care Locator**: [http://localhost:8000/care.html](http://localhost:8000/care.html)
-        - **Interactive API Docs**: [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
-        """)
-        st.info("💡 To start the standalone local server at any time, run `python serve.py 8000` or `.\\start.ps1` from the project root.")
-        
-    with tab_live:
-        st.markdown("### 📱 Embedded Live Preview")
-        vitals_index_path = Path(__file__).resolve().parent.parent / "vitals-web" / "index.html"
-        if vitals_index_path.exists():
-            import streamlit.components.v1 as components
-            html_code = vitals_index_path.read_text(encoding="utf-8", errors="replace")
-            components.html(html_code, height=750, scrolling=True)
-        else:
-            st.info("VITALS web files are located in `vitals-web/`.")
-
-
 # ── Direct Router ─────────────────────────────────────────────────────────────
 page = sidebar()
 router = {
-    "✨ VITALS Portal":       page_vitals,
     "Dashboard":            page_dashboard,
     "Report Analyzer":      page_report_analyzer,
     "Symptom Checker":      page_symptom,
@@ -2242,4 +2168,4 @@ router = {
     "Profile":              page_profile,
     "Settings":             page_settings,
 }
-router.get(page, page_vitals)()
+router.get(page, page_dashboard)()

@@ -1,37 +1,40 @@
-# Python & Bytecode
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-env/
-venv/
+*.pyc
+
+# Virtual environments
 .venv/
-ENV/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+venv/
+env/
 
-# Secrets & Local DBs
+# Environment / secrets
 .env
-.env.local
-*.db
-*.sqlite3
+*.env
+mdps-streamlit/.streamlit/secrets.toml
 
-# IDEs & System
-.vscode/
+# Databases
+*.db
+
+# IDE
 .idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Build / dist
+*.egg-info/
+dist/
+build/
+
+# Logs
+*.log
+
+# Reports (generated at runtime)
+mdps-streamlit/reports/
