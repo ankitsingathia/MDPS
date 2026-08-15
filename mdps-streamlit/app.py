@@ -2078,7 +2078,6 @@ def page_tips():
 # ── Profile ───────────────────────────────────────────────────────────────────
 def page_profile():
     u = st.session_state.user
-    api_key = get_groq_api_key()
 
     if not u:
         st.markdown('<p class="main-title">👤 Guest Profile</p>', unsafe_allow_html=True)
@@ -2088,12 +2087,6 @@ def page_profile():
             <div class="profile-name">Guest User</div>
             <div class="profile-email">Anonymous Session</div>
         </div>""", unsafe_allow_html=True)
-
-        st.markdown("### ⚙️ AI Engine Status")
-        if api_key:
-            st.success("🟢 Cloud Generative LLM Engine Connected (`llama-3.3-70b-versatile`)")
-        else:
-            st.info("⚪ Built-in Clinical Intelligence Engine Active\n\nAll predictions, lab analyses, and medical consultation features operate via local machine learning models and evidence-based clinical rule sets.")
 
         st.markdown("### Log in or Create an Account")
         st.write("Sign in to save your personal medical predictions, track health progress, and manage your account.")
@@ -2117,12 +2110,6 @@ def page_profile():
     s2.markdown(f'<div class="stat-pill"><span class="num" style="color:#d9534f">{positive}</span><span class="lbl">Positive</span></div>', unsafe_allow_html=True)
     s3.markdown(f'<div class="stat-pill"><span class="num">{diseases}</span><span class="lbl">Diseases checked</span></div>', unsafe_allow_html=True)
     st.markdown("")
-
-    st.markdown("### ⚙️ AI Engine Status")
-    if api_key:
-        st.success("🟢 Cloud Generative LLM Engine Connected (`llama-3.3-70b-versatile`)")
-    else:
-        st.info("⚪ Built-in Clinical Intelligence Engine Active\n\nAll predictions, lab analyses, and medical consultation features operate via local machine learning models and evidence-based clinical rule sets. You can optionally add a custom Groq API key in `.streamlit/secrets.toml` under `[groq] api_key`.")
 
     st.markdown("### Account info")
     st.text_input("Username", value=u["username"], disabled=True)
