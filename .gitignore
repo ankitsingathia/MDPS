@@ -13,9 +13,14 @@ env/
 .env
 *.env
 mdps-streamlit/.streamlit/secrets.toml
+mdps-streamlit/.env
 
 # Databases
 *.db
+mdps-streamlit/data.db
+
+# Nested repo metadata
+mdps-streamlit/.git/
 
 # IDE
 .idea/
