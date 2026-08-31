@@ -6,7 +6,9 @@
 [![SQLite Database](https://img.shields.io/badge/SQLite3-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
 [![Plotly Analytics](https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)](https://plotly.com)
 
-An industry-grade, AI-powered digital health screening platform built using **Python, Streamlit, SQLite, and Scikit-Learn**. The **Multiple Disease Prediction System (MDPS)** features a premium Streamlit dashboard, integrating nine specialized clinical screening modules with trained ML models, an intelligent lab report analyzer, a medical facility locator, and an AI clinical assistant (VERA).
+A digital health screening dashboard built with **Python, Streamlit, SQLite and scikit-learn**. The **Multiple Disease Prediction System (MDPS)** puts nine screening modules, a lab report analyzer, a medical facility locator, and an assistant (VERA) behind one Streamlit interface, each backed by a trained estimator and a rule-based scoring engine.
+
+The models are teaching artifacts, not screening tools. Several have measured faults, documented under [Known model limitations](#known-model-limitations) — read that section before drawing any conclusion from an output.
 
 ---
 
@@ -127,6 +129,29 @@ Trained ML estimators are loaded from `mdps-streamlit/models/`:
 | **Kidney Disease** | `kidney.sav` | SVM |
 | **Breast Cancer** | `breast_cancer.joblib` | Random Forest |
 | **Symptom Prognosis** | `symptom_dt.joblib` | Decision Tree |
+
+---
+
+## Known model limitations
+
+The estimators in `mdps-streamlit/models/` were audited by calling them with
+inputs whose expected direction was known, rather than by reading their
+metadata. Several do not behave the way their `classes_` attribute implies:
+
+- `heart.sav` and `kidney.sav` have **inverted labels** — class 1 marks the
+  absence of disease, not its presence.
+- `hepatitis.sav` returns unnormalised class counts from `predict_proba`
+  instead of probabilities, a consequence of a tree `value` convention that
+  changed across scikit-learn 1.3.
+- `liver.sav` is saturated and does not meaningfully discriminate.
+- `breast_cancer.sav` is unreadable; the `.joblib` file is loaded in its place.
+- `diabetes.sav` and `parkinsons.sav` are SVCs trained without
+  `probability=True`, so they expose no calibrated confidence.
+
+Every one of these returns a plausible number rather than raising an error,
+which is exactly why they survive a casual review. They are listed here because
+a model that fails silently is worth more as a documented finding than as an
+undisclosed one.
 
 ---
 
