@@ -6,6 +6,8 @@
 [![SQLite Database](https://img.shields.io/badge/SQLite3-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
 [![Plotly Analytics](https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)](https://plotly.com)
 
+**[🔗 Live Demo](https://lb6qshk8uqrhexvgmuthwy.streamlit.app/)**
+
 A digital health screening dashboard built with **Python, Streamlit, SQLite and scikit-learn**. The **Multiple Disease Prediction System (MDPS)** puts nine screening modules, a lab report analyzer, a medical facility locator, and an assistant (VERA) behind one Streamlit interface, each backed by a trained estimator and a rule-based scoring engine.
 
 The models are teaching artifacts, not screening tools. Several have measured faults, documented under [Known model limitations](#known-model-limitations) — read that section before drawing any conclusion from an output.
